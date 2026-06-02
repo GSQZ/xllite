@@ -9,8 +9,6 @@ import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
 import '../exams/exams_page.dart';
 import '../grades/grades_page.dart';
-import '../schedule/schedule_page.dart';
-import '../settings/settings_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -172,7 +170,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                 ),
                 const SizedBox(height: 10),
-                _FeatureGrid(onElectricityTap: _bindElectricityRoom),
+                const _FeatureGrid(),
               ],
             ),
           );
@@ -881,19 +879,11 @@ class _HomeCourse {
 }
 
 class _FeatureGrid extends StatelessWidget {
-  const _FeatureGrid({required this.onElectricityTap});
-
-  final VoidCallback onElectricityTap;
+  const _FeatureGrid();
 
   @override
   Widget build(BuildContext context) {
     final items = [
-      _FeatureShortcut(
-        Icons.calendar_month_outlined,
-        '课表',
-        '本周课程',
-        onTap: () => _open(context, const SchedulePage()),
-      ),
       _FeatureShortcut(
         Icons.event_note_outlined,
         '考试',
@@ -901,28 +891,10 @@ class _FeatureGrid extends StatelessWidget {
         onTap: () => _open(context, const ExamsPage()),
       ),
       _FeatureShortcut(
-        Icons.credit_card_outlined,
-        '校园卡',
-        '余额流水',
-        onTap: () => _open(context, const CardPage()),
-      ),
-      _FeatureShortcut(
-        Icons.bolt_outlined,
-        '电费',
-        '宿舍余电',
-        onTap: onElectricityTap,
-      ),
-      _FeatureShortcut(
         Icons.school_outlined,
         '成绩',
         '学分绩点',
         onTap: () => _open(context, const GradesPage()),
-      ),
-      _FeatureShortcut(
-        Icons.person_outline,
-        '我的',
-        '账号设置',
-        onTap: () => _open(context, const SettingsPage()),
       ),
     ];
 
