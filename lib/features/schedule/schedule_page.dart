@@ -605,12 +605,12 @@ class _TimelineCourse extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 50,
+            width: 52,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -626,72 +626,85 @@ class _TimelineCourse extends StatelessWidget {
                   course.endText,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colors.onSurfaceVariant,
+                        fontSize: 11,
                       ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
-            children: [
-              Container(
-                width: 9,
-                height: 9,
-                margin: const EdgeInsets.only(top: 3),
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 88,
-                margin: const EdgeInsets.only(top: 7),
-                color: colors.outlineVariant,
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: colors.primaryContainer.withValues(alpha: 0.28),
-                borderRadius: BorderRadius.circular(16),
+                color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: colors.primary.withValues(alpha: 0.10),
+                  color: colors.outlineVariant.withValues(alpha: 0.7),
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      course.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                    const SizedBox(height: 10),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.place_outlined, size: 16, color: colors.primary),
-                        const SizedBox(width: 5),
+                        Container(
+                          width: 3,
+                          height: 22,
+                          margin: const EdgeInsets.only(top: 2),
+                          decoration: BoxDecoration(
+                            color: colors.primary,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                        const SizedBox(width: 9),
                         Expanded(
                           child: Text(
-                            course.location,
-                            maxLines: 1,
+                            course.title,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
                                 ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 11),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: colors.surface.withValues(alpha: 0.74),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.place_outlined,
+                              size: 16,
+                              color: colors.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                course.location,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.25,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       '${course.teacher} · ${course.weeks}',
                       maxLines: 1,
