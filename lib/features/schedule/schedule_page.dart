@@ -339,11 +339,12 @@ class _TimelineCourse extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 58,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -363,12 +364,11 @@ class _TimelineCourse extends StatelessWidget {
                     ),
                   ),
                 ),
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    margin: const EdgeInsets.only(top: 8),
-                    color: const Color(0xFFE5E7EB),
-                  ),
+                Container(
+                  width: 2,
+                  height: 72,
+                  margin: const EdgeInsets.only(top: 8),
+                  color: const Color(0xFFE5E7EB),
                 ),
               ],
             ),
