@@ -237,47 +237,23 @@ class _TodayCoursePanel extends StatelessWidget {
       );
     }
 
-    final colors = Theme.of(context).colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colors.primaryContainer.withValues(alpha: 0.62),
-            colors.secondaryContainer.withValues(alpha: 0.32),
-          ],
-        ),
-      ),
+    return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _CourseStatusPill(
-              label: active == null ? '下一节课' : '正在上课',
-              active: active != null,
+              label: next == null ? '正在上课' : '下一节课',
+              active: next == null && active != null,
             ),
-            const SizedBox(height: 12),
-            if (active != null) _CourseBrief(course: active, prominent: true),
             if (active != null && next != null) ...[
-              const SizedBox(height: 16),
-              Container(height: 1, color: Colors.white.withValues(alpha: 0.72)),
-              const SizedBox(height: 13),
-              Text(
-                '下一节',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
               const SizedBox(height: 8),
-              _CourseBrief(course: next, prominent: false),
+              _CurrentCourseHint(course: active),
             ],
-            if (active == null && next != null)
-              _CourseBrief(course: next, prominent: true),
+            const SizedBox(height: 10),
+            if (next != null) _NextCourseBrief(course: next),
+            if (next == null && active != null) _NextCourseBrief(course: active),
           ],
         ),
       ),
@@ -434,7 +410,7 @@ class _CourseStatusPill extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: active ? colors.primary : Colors.white.withValues(alpha: 0.82),
+        color: active ? colors.primary : colors.primaryContainer.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Padding(
@@ -452,11 +428,39 @@ class _CourseStatusPill extends StatelessWidget {
   }
 }
 
-class _CourseBrief extends StatelessWidget {
-  const _CourseBrief({required this.course, required this.prominent});
+class _CurrentCourseHint extends StatelessWidget {
+  const _CurrentCourseHint({required this.course});
 
   final _HomeCourse course;
-  final bool prominent;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        const Icon(Icons.radio_button_checked, size: 13, color: Color(0xFF10B981)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            '当前：${course.title} · 到 ${_HomeCourse._formatMinutes(course.endMinutes)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NextCourseBrief extends StatelessWidget {
+  const _NextCourseBrief({required this.course});
+
+  final _HomeCourse course;
 
   @override
   Widget build(BuildContext context) {
@@ -467,35 +471,38 @@ class _CourseBrief extends StatelessWidget {
       children: [
         Text(
           course.title,
-          style: (prominent
-                  ? Theme.of(context).textTheme.headlineSmall
-                  : Theme.of(context).textTheme.titleMedium)
-              ?.copyWith(fontWeight: FontWeight.w900),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+              ),
         ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        const SizedBox(height: 8),
+        Row(
           children: [
-            _CourseChip(
-              icon: Icons.schedule,
-              text: '${course.sections} · ${course.timeText}',
-              strong: prominent,
-            ),
-            _CourseChip(
-              icon: Icons.place_outlined,
-              text: course.location,
-              strong: false,
+            _CompactCourseMeta(text: '${course.sections} · ${course.timeText}'),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                course.location,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
             ),
           ],
         ),
         if (course.teacher != '-') ...[
-          const SizedBox(height: 9),
+          const SizedBox(height: 5),
           Text(
             course.teacher,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colors.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
                 ),
           ),
         ],
@@ -504,48 +511,28 @@ class _CourseBrief extends StatelessWidget {
   }
 }
 
-class _CourseChip extends StatelessWidget {
-  const _CourseChip({
-    required this.icon,
-    required this.text,
-    required this.strong,
-  });
+class _CompactCourseMeta extends StatelessWidget {
+  const _CompactCourseMeta({required this.text});
 
-  final IconData icon;
   final String text;
-  final bool strong;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 260),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: strong ? 0.86 : 0.62),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: colors.onSurfaceVariant),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  text,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontSize: 12,
-                    fontWeight: strong ? FontWeight.w700 : FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.primaryContainer.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: colors.primary,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),
