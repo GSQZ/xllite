@@ -251,13 +251,11 @@ class _TodayCoursePanel extends StatelessWidget {
               _NextCourseBrief(
                 course: next,
                 label: '下一节课',
-                active: false,
               ),
             if (next == null && active != null)
               _NextCourseBrief(
                 course: active,
                 label: '正在上课',
-                active: true,
               ),
           ],
         ),
@@ -436,16 +434,15 @@ class _NextCourseBrief extends StatelessWidget {
   const _NextCourseBrief({
     required this.course,
     required this.label,
-    required this.active,
   });
 
   final _HomeCourse course;
   final String label;
-  final bool active;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final location = course.location == '-' ? '地点未标注' : course.location;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +452,7 @@ class _NextCourseBrief extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: active ? colors.primary : colors.onSurfaceVariant,
+                    color: colors.primary,
                     fontWeight: FontWeight.w800,
                   ),
             ),
@@ -469,24 +466,21 @@ class _NextCourseBrief extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 9),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: colors.primaryContainer.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(9),
-                child: Icon(Icons.place_outlined, color: colors.primary, size: 22),
-              ),
+            Text(
+              '去',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
-                course.location,
+                location,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
