@@ -237,24 +237,35 @@ class _TodayCoursePanel extends StatelessWidget {
       );
     }
 
-    return Card(
+    final colors = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.primaryContainer.withValues(alpha: 0.62),
+            colors.secondaryContainer.withValues(alpha: 0.32),
+          ],
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              active == null ? '下一节课' : '正在上课',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+            _CourseStatusPill(
+              label: active == null ? '下一节课' : '正在上课',
+              active: active != null,
             ),
             const SizedBox(height: 12),
             if (active != null) _CourseBrief(course: active, prominent: true),
             if (active != null && next != null) ...[
-              const SizedBox(height: 14),
-              const Divider(height: 1),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
+              Container(height: 1, color: Colors.white.withValues(alpha: 0.72)),
+              const SizedBox(height: 13),
               Text(
                 '下一节',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -411,6 +422,36 @@ class _TodayCoursePanel extends StatelessWidget {
   }
 }
 
+class _CourseStatusPill extends StatelessWidget {
+  const _CourseStatusPill({required this.label, required this.active});
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: active ? colors.primary : Colors.white.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? colors.onPrimary : colors.primary,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CourseBrief extends StatelessWidget {
   const _CourseBrief({required this.course, required this.prominent});
 
@@ -421,59 +462,93 @@ class _CourseBrief extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: prominent
-                ? colors.primaryContainer.withValues(alpha: 0.7)
-                : const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-            child: Text(
-              course.sections,
-              style: TextStyle(
-                color: prominent ? colors.primary : colors.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-              ),
-            ),
-          ),
+        Text(
+          course.title,
+          style: (prominent
+                  ? Theme.of(context).textTheme.headlineSmall
+                  : Theme.of(context).textTheme.titleMedium)
+              ?.copyWith(fontWeight: FontWeight.w900),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                course.title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                '${course.timeText} · ${course.location}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-              ),
-              if (course.teacher != '-') ...[
-                const SizedBox(height: 3),
-                Text(
-                  course.teacher,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _CourseChip(
+              icon: Icons.schedule,
+              text: '${course.sections} · ${course.timeText}',
+              strong: prominent,
+            ),
+            _CourseChip(
+              icon: Icons.place_outlined,
+              text: course.location,
+              strong: false,
+            ),
+          ],
+        ),
+        if (course.teacher != '-') ...[
+          const SizedBox(height: 9),
+          Text(
+            course.teacher,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CourseChip extends StatelessWidget {
+  const _CourseChip({
+    required this.icon,
+    required this.text,
+    required this.strong,
+  });
+
+  final IconData icon;
+  final String text;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 260),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: strong ? 0.86 : 0.62),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: colors.onSurfaceVariant),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: strong ? FontWeight.w700 : FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
