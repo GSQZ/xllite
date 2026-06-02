@@ -13,9 +13,18 @@ class LoadingPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 14),
-            Text(label),
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
           ],
         ),
       ),
@@ -45,7 +54,7 @@ class EmptyPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 44, color: colors.outline),
+            Icon(icon, size: 34, color: colors.outline),
             const SizedBox(height: 12),
             Text(
               title,
@@ -87,7 +96,7 @@ class ErrorPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 44, color: Color(0xFFB91C1C)),
+            const Icon(Icons.error_outline, size: 34, color: Color(0xFFB91C1C)),
             const SizedBox(height: 12),
             Text(
               error.toString(),
@@ -127,53 +136,56 @@ class InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              if (icon != null) ...[
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: colors.primaryContainer.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              SizedBox(
+                width: 34,
+                height: 34,
+                child: Icon(icon, color: colors.onSurfaceVariant, size: 21),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
-                  child: Icon(icon, color: colors.primary),
-                ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 3),
                     Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                      subtitle!,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
                           ),
                     ),
-                    if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: colors.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-              ...?(trailing == null ? null : [trailing!]),
-            ],
-          ),
+            ),
+            ...?(trailing == null ? null : [trailing!]),
+          ],
         ),
       ),
     );
+  }
+}
+
+class ThinDivider extends StatelessWidget {
+  const ThinDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(height: 1, thickness: 1, color: Color(0xFFF1F3F5));
   }
 }

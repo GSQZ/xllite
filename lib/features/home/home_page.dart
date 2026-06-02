@@ -60,7 +60,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('新理Lite')),
       body: FutureBuilder<HomeSnapshot>(
         future: _future,
         builder: (context, snapshot) {
@@ -78,23 +77,17 @@ class _HomePageState extends ConsumerState<HomePage> {
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
               children: [
-                _WelcomePanel(name: name, subtitle: major, online: data.health),
-                const SizedBox(height: 16),
+                _HomeHeader(name: name, subtitle: major, online: data.health),
+                const SizedBox(height: 26),
+                const _FeatureList(),
+                const SizedBox(height: 28),
                 Text(
-                  '常用功能',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
+                  '民间开发版本，不代表学校官方应用。账号凭据只保存在本机。',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                ),
-                const SizedBox(height: 10),
-                const _FeatureGrid(),
-                const SizedBox(height: 16),
-                const InfoCard(
-                  icon: Icons.info_outline,
-                  title: '民间开发版本',
-                  subtitle: '新理Lite 不代表新疆理工学院官方应用，账号凭据只保存在本机。',
                 ),
               ],
             ),
@@ -112,8 +105,8 @@ class HomeSnapshot {
   final Map<String, dynamic> profile;
 }
 
-class _WelcomePanel extends StatelessWidget {
-  const _WelcomePanel({
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
     required this.name,
     required this.subtitle,
     required this.online,
@@ -127,112 +120,101 @@ class _WelcomePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$name，今天看点什么',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 14),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: online ? const Color(0xFFEFFAF5) : const Color(0xFFFFF7ED),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      child: Text(
-                        online ? '接口在线' : '接口异常',
-                        style: TextStyle(
-                          color: online ? const Color(0xFF047857) : const Color(0xFFC2410C),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '新理Lite',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '$name · $subtitle',
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: online ? const Color(0xFF10B981) : const Color(0xFFF97316),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Icon(Icons.dashboard_outlined, color: colors.primary, size: 42),
-          ],
-        ),
+              const SizedBox(width: 7),
+              Text(
+                online ? '服务在线' : '服务异常',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class _FeatureGrid extends StatelessWidget {
-  const _FeatureGrid();
+class _FeatureList extends StatelessWidget {
+  const _FeatureList();
 
   @override
   Widget build(BuildContext context) {
     final items = [
-      _FeatureShortcut(
+      _FeatureEntry(
         Icons.calendar_month_outlined,
         '课表',
-        '本周课程',
+        '按周查看课程',
         onTap: () => _open(context, const SchedulePage()),
       ),
-      _FeatureShortcut(
+      _FeatureEntry(
         Icons.event_note_outlined,
         '考试',
-        '安排和座位',
+        '考试时间、地点、座位',
         onTap: () => _open(context, const ExamsPage()),
       ),
-      _FeatureShortcut(
+      _FeatureEntry(
         Icons.credit_card_outlined,
         '校园卡',
-        '余额流水',
+        '余额和最近流水',
         onTap: () => _open(context, const CardPage()),
       ),
-      _FeatureShortcut(
+      _FeatureEntry(
         Icons.bolt_outlined,
         '电费',
-        '宿舍余电',
+        '查询宿舍剩余电量',
         onTap: () => _open(context, const ElectricityPage()),
       ),
-      _FeatureShortcut(
+      _FeatureEntry(
         Icons.school_outlined,
         '成绩',
-        '学分绩点',
+        '学分、绩点、课程成绩',
         onTap: () => _open(context, const GradesPage()),
       ),
-      _FeatureShortcut(
+      _FeatureEntry(
         Icons.person_outline,
         '我的',
-        '账号设置',
+        '账号和说明',
         onTap: () => _open(context, const SettingsPage()),
       ),
     ];
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: items.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.75,
-      ),
-      itemBuilder: (context, index) => items[index],
+    return Column(
+      children: [
+        for (var index = 0; index < items.length; index++) ...[
+          items[index],
+          if (index != items.length - 1) const ThinDivider(),
+        ],
+      ],
     );
   }
 
@@ -241,39 +223,49 @@ class _FeatureGrid extends StatelessWidget {
   }
 }
 
-class _FeatureShortcut extends StatelessWidget {
-  const _FeatureShortcut(this.icon, this.title, this.subtitle, {this.onTap});
+class _FeatureEntry extends StatelessWidget {
+  const _FeatureEntry(this.icon, this.title, this.subtitle, {required this.onTap});
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Icon(icon, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 2),
-                    Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
+    final colors = Theme.of(context).colorScheme;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: colors.onSurfaceVariant),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right, size: 20, color: Color(0xFF9CA3AF)),
+          ],
         ),
       ),
     );

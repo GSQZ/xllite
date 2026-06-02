@@ -60,8 +60,8 @@ class SplashScreen extends StatelessWidget {
           children: [
             DecoratedBox(
               decoration: BoxDecoration(
-                color: const Color(0xFF0F766E),
-                borderRadius: BorderRadius.circular(18),
+                color: const Color(0xFF111827),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: const SizedBox(
                 width: 68,
@@ -89,23 +89,24 @@ class SplashScreen extends StatelessWidget {
 
 class AppTheme {
   static ThemeData light() {
-    const seed = Color(0xFF0F766E);
+    const seed = Color(0xFF111827);
     final scheme = ColorScheme.fromSeed(
       seedColor: seed,
       primary: seed,
-      secondary: const Color(0xFF2563EB),
-      tertiary: const Color(0xFFF59E0B),
-      surface: const Color(0xFFFBFCFD),
+      secondary: const Color(0xFF0F766E),
+      tertiary: const Color(0xFF2563EB),
+      surface: Colors.white,
     );
 
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
-      scaffoldBackgroundColor: const Color(0xFFF6F8FA),
+      scaffoldBackgroundColor: Colors.white,
       appBarTheme: const AppBarTheme(
         centerTitle: false,
         elevation: 0,
-        backgroundColor: Color(0xFFF6F8FA),
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.white,
         foregroundColor: Color(0xFF111827),
       ),
       cardTheme: CardThemeData(
@@ -113,24 +114,52 @@ class AppTheme {
         margin: EdgeInsets.zero,
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFF1F3F5)),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        indicatorColor: const Color(0xFFF3F4F6),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? const Color(0xFF111827) : const Color(0xFF6B7280),
+          );
+        }),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF111827),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF111827),
           side: const BorderSide(color: Color(0xFFE5E7EB)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFFF9FAFB),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: seed, width: 1.4),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF111827), width: 1.2),
         ),
       ),
     );
