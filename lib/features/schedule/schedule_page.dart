@@ -115,7 +115,7 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
           )
         else
           ...selectedCourses.map((course) {
-            return _TimelineCourse(course: _ScheduleCourse.fromMap(course));
+            return _AgendaCourseCard(course: _ScheduleCourse.fromMap(course));
           }),
       ],
     );
@@ -595,130 +595,165 @@ class _ScheduleCourse {
   }
 }
 
-class _TimelineCourse extends StatelessWidget {
-  const _TimelineCourse({required this.course});
+class _AgendaCourseCard extends StatelessWidget {
+  const _AgendaCourseCard({required this.course});
 
   final _ScheduleCourse course;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final accent = _accentFor(course.title);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 52,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  course.startText,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.onSurface,
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  course.endText,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                ),
-              ],
-            ),
+      padding: const EdgeInsets.only(bottom: 10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border(
+            left: BorderSide(color: accent, width: 4),
+            top: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.72)),
+            right: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.72)),
+            bottom: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.72)),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: colors.outlineVariant.withValues(alpha: 0.7),
+          boxShadow: [
+            BoxShadow(
+              color: colors.shadow.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      course.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            height: 1.18,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _TimePill(
+                    start: course.startText,
+                    end: course.endText,
+                    color: accent,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 11),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.place_outlined, size: 16, color: accent),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          course.location,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                height: 1.28,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 3,
-                          height: 22,
-                          margin: const EdgeInsets.only(top: 2),
-                          decoration: BoxDecoration(
-                            color: colors.primary,
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                        const SizedBox(width: 9),
-                        Expanded(
-                          child: Text(
-                            course.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 11),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: colors.surface.withValues(alpha: 0.74),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.place_outlined,
-                              size: 16,
-                              color: colors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                course.location,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      height: 1.25,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${course.teacher} · ${course.weeks}',
+              const SizedBox(height: 9),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      course.weeks,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: colors.onSurfaceVariant,
                           ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      course.teacher,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Color _accentFor(String value) {
+    const colors = [
+      Color(0xFF2563EB),
+      Color(0xFF059669),
+      Color(0xFFD97706),
+      Color(0xFF7C3AED),
+      Color(0xFFDC2626),
+    ];
+    return colors[value.hashCode.abs() % colors.length];
+  }
+}
+
+class _TimePill extends StatelessWidget {
+  const _TimePill({
+    required this.start,
+    required this.end,
+    required this.color,
+  });
+
+  final String start;
+  final String end;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        child: Text(
+          '$start-$end',
+          maxLines: 1,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+              ),
+        ),
       ),
     );
   }
