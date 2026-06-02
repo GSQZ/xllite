@@ -60,7 +60,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('新理Lite')),
       body: FutureBuilder<HomeSnapshot>(
         future: _future,
         builder: (context, snapshot) {
