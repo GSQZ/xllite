@@ -41,6 +41,7 @@ class _ScheduleCalendar extends StatefulWidget {
 class _ScheduleCalendarState extends State<_ScheduleCalendar> {
   int? _selectedDay;
   int? _selectedWeek;
+  late final DateTime _termStartDate;
 
   int get _currentDay {
     return _selectedDay ??= _initialDayIndex();
@@ -55,6 +56,7 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     super.initState();
     _selectedDay = _initialDayIndex();
     _selectedWeek = _initialTeachingWeek(widget.term);
+    _termStartDate = _termStartFor(widget.term);
   }
 
   static const _days = [
@@ -71,31 +73,40 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
   Widget build(BuildContext context) {
     final selectedCourses = _coursesForDay(_currentDay);
     final selectedDay = _days[_currentDay];
+    final selectedDate = _dateFor(_currentWeek, _currentDay);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
       children: [
-        _TermHeader(
+        _CalendarHeader(
           term: widget.term,
-          totalCount: widget.courses.length,
-          todayIndex: _initialDayIndex(),
           selectedWeek: _currentWeek,
+          onPreviousWeek: _currentWeek <= 1
+              ? null
+              : () => setState(() => _selectedWeek = _currentWeek - 1),
+          onNextWeek: _currentWeek >= 25
+              ? null
+              : () => setState(() => _selectedWeek = _currentWeek + 1),
+          onToday: () => setState(() {
+            _selectedWeek = _initialTeachingWeek(widget.term);
+            _selectedDay = _initialDayIndex();
+          }),
         ),
-        const SizedBox(height: 14),
-        _WeekCalibrator(
-          selectedWeek: _currentWeek,
-          onChanged: (week) => setState(() => _selectedWeek = week),
-        ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _WeekStrip(
           days: _days,
           selectedDay: _currentDay,
+          dateForDay: (index) => _dateFor(_currentWeek, index),
           courseCountForDay: (index) => _coursesForDay(index).length,
           onSelected: (index) => setState(() => _selectedDay = index),
         ),
-        const SizedBox(height: 18),
-        _DayTitle(day: selectedDay.fullName, count: selectedCourses.length),
-        const SizedBox(height: 12),
+        const SizedBox(height: 22),
+        _DayTitle(
+          day: selectedDay.fullName,
+          date: selectedDate,
+          count: selectedCourses.length,
+        ),
+        const SizedBox(height: 14),
         if (selectedCourses.isEmpty)
           const EmptyPanel(
             title: '这天没有课程',
@@ -103,7 +114,9 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
             icon: Icons.event_available_outlined,
           )
         else
-          ...selectedCourses.map((course) => _TimelineCourse(course: course)),
+          ...selectedCourses.map((course) {
+            return _TimelineCourse(course: _ScheduleCourse.fromMap(course));
+          }),
       ],
     );
   }
@@ -177,6 +190,28 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     return (days ~/ 7 + 1).clamp(1, 25);
   }
 
+  static DateTime _termStartFor(String term) {
+    final match = RegExp(r'(\d{4})-(\d{4})-(\d)').firstMatch(term);
+    if (match == null) {
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: _initialDayIndex()));
+    }
+
+    final firstYear = int.tryParse(match.group(1) ?? '');
+    final secondYear = int.tryParse(match.group(2) ?? '');
+    final termIndex = int.tryParse(match.group(3) ?? '');
+    if (firstYear == null || secondYear == null || termIndex == null) {
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: _initialDayIndex()));
+    }
+
+    return termIndex == 1
+        ? _firstMondayOfMonth(firstYear, DateTime.september)
+        : _firstMondayOfMonth(secondYear, DateTime.march);
+  }
+
   static DateTime _firstMondayOfMonth(int year, int month) {
     var date = DateTime(year, month);
     while (date.weekday != DateTime.monday) {
@@ -232,6 +267,10 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
 
     return !hasNumbers;
   }
+
+  DateTime _dateFor(int week, int dayIndex) {
+    return _termStartDate.add(Duration(days: (week - 1) * 7 + dayIndex));
+  }
 }
 
 class _WeekDay {
@@ -241,115 +280,65 @@ class _WeekDay {
   final String fullName;
 }
 
-class _TermHeader extends StatelessWidget {
-  const _TermHeader({
+class _CalendarHeader extends StatelessWidget {
+  const _CalendarHeader({
     required this.term,
-    required this.totalCount,
-    required this.todayIndex,
     required this.selectedWeek,
+    required this.onPreviousWeek,
+    required this.onNextWeek,
+    required this.onToday,
   });
 
   final String term;
-  final int totalCount;
-  final int todayIndex;
   final int selectedWeek;
+  final VoidCallback? onPreviousWeek;
+  final VoidCallback? onNextWeek;
+  final VoidCallback onToday;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: colors.primaryContainer.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(14),
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '第 $selectedWeek 周',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
               ),
-              child: Icon(Icons.calendar_view_week_outlined, color: colors.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    term,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '第 $selectedWeek 周 · 今天星期${_ScheduleCalendarState._days[todayIndex].shortName} · 共 $totalCount 条课程',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                  ),
-                ],
+              const SizedBox(height: 3),
+              Text(
+                term,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
-}
-
-class _WeekCalibrator extends StatelessWidget {
-  const _WeekCalibrator({
-    required this.selectedWeek,
-    required this.onChanged,
-  });
-
-  final int selectedWeek;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: selectedWeek <= 1 ? null : () => onChanged(selectedWeek - 1),
-              icon: const Icon(Icons.chevron_left),
-              tooltip: '上一周',
-            ),
-            Expanded(
-              child: Column(
-                children: [
-                  Text(
-                    '第 $selectedWeek 周',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '按周次过滤课程',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: selectedWeek >= 25 ? null : () => onChanged(selectedWeek + 1),
-              icon: const Icon(Icons.chevron_right),
-              tooltip: '下一周',
-            ),
-          ],
+        IconButton(
+          onPressed: onPreviousWeek,
+          icon: const Icon(Icons.chevron_left),
+          tooltip: '上一周',
         ),
-      ),
+        IconButton(
+          onPressed: onToday,
+          icon: const Icon(Icons.today_outlined),
+          tooltip: '回到今天',
+        ),
+        IconButton(
+          onPressed: onNextWeek,
+          icon: const Icon(Icons.chevron_right),
+          tooltip: '下一周',
+        ),
+      ],
     );
   }
 }
@@ -358,34 +347,39 @@ class _WeekStrip extends StatelessWidget {
   const _WeekStrip({
     required this.days,
     required this.selectedDay,
+    required this.dateForDay,
     required this.courseCountForDay,
     required this.onSelected,
   });
 
   final List<_WeekDay> days;
   final int selectedDay;
+  final DateTime Function(int index) dateForDay;
   final int Function(int index) courseCountForDay;
   final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final colors = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: List.generate(days.length, (index) {
-            final day = days[index];
-            final isSelected = index == selectedDay;
-            final count = courseCountForDay(index);
+            final date = dateForDay(index);
             return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: _WeekDayButton(
-                  label: day.shortName,
-                  count: count,
-                  selected: isSelected,
-                  onTap: () => onSelected(index),
-                ),
+              child: _WeekDayButton(
+                label: days[index].shortName,
+                date: date,
+                count: courseCountForDay(index),
+                selected: index == selectedDay,
+                isToday: _isSameDate(date, DateTime.now()),
+                onTap: () => onSelected(index),
               ),
             );
           }),
@@ -393,36 +387,45 @@ class _WeekStrip extends StatelessWidget {
       ),
     );
   }
+
+  bool _isSameDate(DateTime left, DateTime right) {
+    return left.year == right.year && left.month == right.month && left.day == right.day;
+  }
 }
 
 class _WeekDayButton extends StatelessWidget {
   const _WeekDayButton({
     required this.label,
+    required this.date,
     required this.count,
     required this.selected,
+    required this.isToday,
     required this.onTap,
   });
 
   final String label;
+  final DateTime date;
   final int count;
   final bool selected;
+  final bool isToday;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final foreground = selected ? colors.onPrimary : colors.onSurface;
-    final muted = selected ? colors.onPrimary.withValues(alpha: 0.78) : colors.outline;
+    final foreground = selected ? colors.onPrimary : colors.onSurfaceVariant;
+    final dateColor = selected ? colors.onPrimary : colors.onSurface;
+    final dotColor = selected
+        ? colors.onPrimary
+        : count > 0
+            ? colors.primary
+            : colors.outlineVariant;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       onTap: onTap,
-      child: Container(
-        height: 66,
-        decoration: BoxDecoration(
-          color: selected ? colors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
+      child: SizedBox(
+        height: 74,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -430,14 +433,42 @@ class _WeekDayButton extends StatelessWidget {
               label,
               style: TextStyle(
                 color: foreground,
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              count == 0 ? '空' : '$count节',
-              style: TextStyle(color: muted, fontSize: 11),
+            const SizedBox(height: 6),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: selected ? colors.primary : Colors.transparent,
+                shape: BoxShape.circle,
+                border: isToday && !selected
+                    ? Border.all(color: colors.primary, width: 1.2)
+                    : null,
+              ),
+              child: SizedBox(
+                width: 34,
+                height: 34,
+                child: Center(
+                  child: Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      color: dateColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Container(
+              width: count > 0 ? 5 : 3,
+              height: count > 0 ? 5 : 3,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
             ),
           ],
         ),
@@ -447,9 +478,14 @@ class _WeekDayButton extends StatelessWidget {
 }
 
 class _DayTitle extends StatelessWidget {
-  const _DayTitle({required this.day, required this.count});
+  const _DayTitle({
+    required this.day,
+    required this.date,
+    required this.count,
+  });
 
   final String day;
+  final DateTime date;
   final int count;
 
   @override
@@ -464,102 +500,205 @@ class _DayTitle extends StatelessWidget {
                 ),
           ),
         ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFFAF5),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            child: Text(
-              '$count 门课',
-              style: const TextStyle(
-                color: Color(0xFF047857),
-                fontWeight: FontWeight.w700,
+        Text(
+          '${date.month}月${date.day}日 · $count 门课',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
-            ),
-          ),
         ),
       ],
     );
   }
 }
 
+class _ScheduleCourse {
+  const _ScheduleCourse({
+    required this.title,
+    required this.teacher,
+    required this.location,
+    required this.weeks,
+    required this.startMinutes,
+    required this.endMinutes,
+  });
+
+  final String title;
+  final String teacher;
+  final String location;
+  final String weeks;
+  final int startMinutes;
+  final int endMinutes;
+
+  String get startText => _formatMinutes(startMinutes);
+  String get endText => _formatMinutes(endMinutes);
+
+  static _ScheduleCourse fromMap(Map<String, dynamic> course) {
+    final sections = textValue(course['sections'], fallback: textValue(course['slot']));
+    final range = _timeRangeForSections(sections);
+    return _ScheduleCourse(
+      title: textValue(course['title'], fallback: '未命名课程'),
+      teacher: textValue(course['teacher'], fallback: '教师未标注'),
+      location: textValue(course['location'], fallback: '地点未标注'),
+      weeks: textValue(course['weeks'], fallback: '周次未标注'),
+      startMinutes: range.$1,
+      endMinutes: range.$2,
+    );
+  }
+
+  static String _formatMinutes(int minutes) {
+    final hour = minutes ~/ 60;
+    final minute = minutes % 60;
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
+  static (int, int) _timeRangeForSections(String sections) {
+    final numbers = RegExp(r'\d+')
+        .allMatches(sections)
+        .map((match) => int.tryParse(match.group(0) ?? ''))
+        .whereType<int>()
+        .toList();
+    final startSection = numbers.isEmpty ? 1 : numbers.first;
+    final endSection = numbers.isEmpty ? startSection : numbers.last;
+    return (_sectionStart(startSection), _sectionEnd(endSection));
+  }
+
+  static int _sectionStart(int section) {
+    const starts = {
+      1: 10 * 60,
+      2: 10 * 60 + 55,
+      3: 12 * 60,
+      4: 12 * 60 + 55,
+      5: 16 * 60,
+      6: 16 * 60 + 55,
+      7: 18 * 60,
+      8: 18 * 60 + 55,
+      9: 20 * 60 + 30,
+      10: 21 * 60 + 25,
+    };
+    return starts[section] ?? 23 * 60 + 59;
+  }
+
+  static int _sectionEnd(int section) {
+    const ends = {
+      1: 10 * 60 + 45,
+      2: 11 * 60 + 40,
+      3: 12 * 60 + 45,
+      4: 13 * 60 + 40,
+      5: 16 * 60 + 45,
+      6: 17 * 60 + 40,
+      7: 18 * 60 + 45,
+      8: 19 * 60 + 40,
+      9: 21 * 60 + 15,
+      10: 22 * 60 + 10,
+    };
+    return ends[section] ?? 23 * 60 + 59;
+  }
+}
+
 class _TimelineCourse extends StatelessWidget {
   const _TimelineCourse({required this.course});
 
-  final Map<String, dynamic> course;
+  final _ScheduleCourse course;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final sections = textValue(course['sections'], fallback: textValue(course['slot']));
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 58,
+            width: 50,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: colors.secondaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                    child: Text(
-                      sections,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: colors.onSecondaryContainer,
+                Text(
+                  course.startText,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurface,
                         fontWeight: FontWeight.w800,
-                        fontSize: 12,
                       ),
-                    ),
-                  ),
                 ),
-                Container(
-                  width: 2,
-                  height: 72,
-                  margin: const EdgeInsets.only(top: 8),
-                  color: const Color(0xFFE5E7EB),
+                const SizedBox(height: 2),
+                Text(
+                  course.endText,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
+          Column(
+            children: [
+              Container(
+                width: 9,
+                height: 9,
+                margin: const EdgeInsets.only(top: 3),
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 88,
+                margin: const EdgeInsets.only(top: 7),
+                color: colors.outlineVariant,
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Card(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.primaryContainer.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: colors.primary.withValues(alpha: 0.10),
+                ),
+              ),
               child: Padding(
-                padding: const EdgeInsets.all(15),
+                padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      textValue(course['title'], fallback: '未命名课程'),
+                      course.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
                     ),
                     const SizedBox(height: 10),
-                    _CourseMeta(
-                      icon: Icons.person_outline,
-                      text: textValue(course['teacher'], fallback: '教师未标注'),
+                    Row(
+                      children: [
+                        Icon(Icons.place_outlined, size: 16, color: colors.primary),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            course.location,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
-                    _CourseMeta(
-                      icon: Icons.place_outlined,
-                      text: textValue(course['location'], fallback: '地点未标注'),
-                    ),
-                    const SizedBox(height: 6),
-                    _CourseMeta(
-                      icon: Icons.date_range_outlined,
-                      text: textValue(course['weeks'], fallback: '周次未标注'),
+                    const SizedBox(height: 7),
+                    Text(
+                      '${course.teacher} · ${course.weeks}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
                     ),
                   ],
                 ),
@@ -568,31 +707,6 @@ class _TimelineCourse extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _CourseMeta extends StatelessWidget {
-  const _CourseMeta({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Theme.of(context).colorScheme.outline),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ),
-      ],
     );
   }
 }
