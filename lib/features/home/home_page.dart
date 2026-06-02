@@ -113,7 +113,7 @@ class _WelcomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final greeting = _greetingFor(name);
+    final greeting = _greetingFor(_shortName(name));
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -174,6 +174,14 @@ class _WelcomeHeader extends StatelessWidget {
       return _GreetingCopy('下午好，$name同学', '今天也保持节奏。');
     }
     return _GreetingCopy('晚上好，$name同学', '复盘一下今天的事项。');
+  }
+
+  String _shortName(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed == '同学') {
+      return '同学';
+    }
+    return trimmed.characters.first;
   }
 }
 
