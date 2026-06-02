@@ -113,40 +113,75 @@ class _WelcomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final greeting = _greetingFor(name);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 4, 2, 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _greetingFor(name),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-        ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.primaryContainer.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 42,
+              decoration: BoxDecoration(
+                color: colors.primary,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    greeting.title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    greeting.subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  String _greetingFor(String name) {
+  _GreetingCopy _greetingFor(String name) {
     final hour = DateTime.now().hour;
     if (hour < 5) {
-      return '$name同学，夜深了，早点休息';
+      return _GreetingCopy('$name同学，夜深了', '先休息，明天再继续。');
     }
     if (hour < 11) {
-      return '$name同学，上午好';
+      return _GreetingCopy('上午好，$name同学', '从今天的课程开始。');
     }
     if (hour < 14) {
-      return '$name同学，中午好';
+      return _GreetingCopy('中午好，$name同学', '看一眼下午安排。');
     }
     if (hour < 18) {
-      return '$name同学，下午好';
+      return _GreetingCopy('下午好，$name同学', '今天也保持节奏。');
     }
-    return '$name同学，晚上好';
+    return _GreetingCopy('晚上好，$name同学', '复盘一下今天的事项。');
   }
+}
+
+class _GreetingCopy {
+  const _GreetingCopy(this.title, this.subtitle);
+
+  final String title;
+  final String subtitle;
 }
 
 class _FeatureGrid extends StatelessWidget {
