@@ -39,13 +39,24 @@ class _HomePageState extends ConsumerState<HomePage> {
       throw const XjitApiException('请先登录');
     }
     final api = ref.read(xjitApiClientProvider);
-    final health = await api.health();
-    final profile = await api.run(
-      XjitFeature.profile,
-      username: session.username,
-      password: session.password,
+    final results = await Future.wait([
+      api.health(),
+      api.run(
+        XjitFeature.profile,
+        username: session.username,
+        password: session.password,
+      ),
+      api.run(
+        XjitFeature.schedule,
+        username: session.username,
+        password: session.password,
+      ),
+    ]);
+    return HomeSnapshot(
+      health: results[0] as bool,
+      profile: results[1] as Map<String, dynamic>,
+      schedule: results[2] as Map<String, dynamic>,
     );
-    return HomeSnapshot(health: health, profile: profile);
   }
 
   Future<void> _refresh() async {
@@ -81,6 +92,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               children: [
                 _WelcomeHeader(name: name),
                 const SizedBox(height: 16),
+                _TodayCoursePanel(schedule: data.schedule),
+                const SizedBox(height: 16),
                 Text(
                   '常用功能',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -99,10 +112,15 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 class HomeSnapshot {
-  const HomeSnapshot({required this.health, required this.profile});
+  const HomeSnapshot({
+    required this.health,
+    required this.profile,
+    required this.schedule,
+  });
 
   final bool health;
   final Map<String, dynamic> profile;
+  final Map<String, dynamic> schedule;
 }
 
 class _WelcomeHeader extends StatelessWidget {
@@ -190,6 +208,365 @@ class _GreetingCopy {
 
   final String title;
   final String subtitle;
+}
+
+class _TodayCoursePanel extends StatelessWidget {
+  const _TodayCoursePanel({required this.schedule});
+
+  final Map<String, dynamic> schedule;
+
+  @override
+  Widget build(BuildContext context) {
+    final courses = _todayCourses();
+    final active = _activeCourse(courses);
+    final next = _nextCourse(courses);
+
+    if (courses.isEmpty) {
+      return const InfoCard(
+        icon: Icons.event_available_outlined,
+        title: '今天没有课程',
+        subtitle: '可以去课表查看其他日期安排。',
+      );
+    }
+
+    if (active == null && next == null) {
+      return const InfoCard(
+        icon: Icons.done_all_outlined,
+        title: '今天课程已结束',
+        subtitle: '可以去课表查看明天安排。',
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              active == null ? '下一节课' : '正在上课',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            if (active != null) _CourseBrief(course: active, prominent: true),
+            if (active != null && next != null) ...[
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 14),
+              Text(
+                '下一节',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              _CourseBrief(course: next, prominent: false),
+            ],
+            if (active == null && next != null)
+              _CourseBrief(course: next, prominent: true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<_HomeCourse> _todayCourses() {
+    final rawCourses = mapList(schedule['courses']);
+    final now = DateTime.now();
+    final week = _initialTeachingWeek(textValue(schedule['term'], fallback: ''));
+    final dayIndex = now.weekday - 1;
+    if (dayIndex < 0 || dayIndex > 6) {
+      return const [];
+    }
+
+    final courses = rawCourses
+        .where((course) => _matchesDay(course, dayIndex))
+        .where((course) => _matchesWeek(course, week))
+        .map(_HomeCourse.fromMap)
+        .toList();
+    courses.sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
+    return courses;
+  }
+
+  _HomeCourse? _activeCourse(List<_HomeCourse> courses) {
+    final minutes = _nowMinutes();
+    for (final course in courses) {
+      if (minutes >= course.startMinutes && minutes <= course.endMinutes) {
+        return course;
+      }
+    }
+    return null;
+  }
+
+  _HomeCourse? _nextCourse(List<_HomeCourse> courses) {
+    final minutes = _nowMinutes();
+    for (final course in courses) {
+      if (course.startMinutes > minutes) {
+        return course;
+      }
+    }
+    return null;
+  }
+
+  int _nowMinutes() {
+    final now = DateTime.now();
+    return now.hour * 60 + now.minute;
+  }
+
+  bool _matchesDay(Map<String, dynamic> course, int dayIndex) {
+    const days = [
+      ('一', '星期一'),
+      ('二', '星期二'),
+      ('三', '星期三'),
+      ('四', '星期四'),
+      ('五', '星期五'),
+      ('六', '星期六'),
+      ('日', '星期日'),
+    ];
+    final day = days[dayIndex];
+    final value = textValue(course['day'], fallback: '');
+    return value.contains(day.$2) ||
+        value.contains('周${day.$1}') ||
+        value.contains('星期${day.$1}');
+  }
+
+  bool _matchesWeek(Map<String, dynamic> course, int week) {
+    final weeks = textValue(course['weeks'], fallback: '');
+    if (weeks.isEmpty || weeks == '-') {
+      return true;
+    }
+
+    final normalized = weeks
+        .replaceAll('－', '-')
+        .replaceAll('—', '-')
+        .replaceAll('~', '-')
+        .replaceAll('～', '-')
+        .replaceAll('至', '-')
+        .replaceAll('到', '-');
+
+    if ((normalized.contains('单') || normalized.toLowerCase().contains('odd')) &&
+        week.isEven) {
+      return false;
+    }
+    if ((normalized.contains('双') || normalized.toLowerCase().contains('even')) &&
+        week.isOdd) {
+      return false;
+    }
+
+    var withoutRanges = normalized;
+    var hasNumbers = false;
+    for (final match in RegExp(r'(\d+)\s*-\s*(\d+)').allMatches(normalized)) {
+      hasNumbers = true;
+      final start = int.tryParse(match.group(1) ?? '');
+      final end = int.tryParse(match.group(2) ?? '');
+      if (start != null && end != null && week >= start && week <= end) {
+        return true;
+      }
+      withoutRanges = withoutRanges.replaceFirst(match.group(0) ?? '', ' ');
+    }
+
+    for (final match in RegExp(r'\d+').allMatches(withoutRanges)) {
+      hasNumbers = true;
+      if (int.tryParse(match.group(0) ?? '') == week) {
+        return true;
+      }
+    }
+
+    return !hasNumbers;
+  }
+
+  int _initialTeachingWeek(String term) {
+    final now = DateTime.now();
+    final match = RegExp(r'(\d{4})-(\d{4})-(\d)').firstMatch(term);
+    if (match == null) {
+      return 1;
+    }
+
+    final firstYear = int.tryParse(match.group(1) ?? '');
+    final secondYear = int.tryParse(match.group(2) ?? '');
+    final termIndex = int.tryParse(match.group(3) ?? '');
+    if (firstYear == null || secondYear == null || termIndex == null) {
+      return 1;
+    }
+
+    final start = termIndex == 1
+        ? _firstMondayOfMonth(firstYear, DateTime.september)
+        : _firstMondayOfMonth(secondYear, DateTime.march);
+    final days = now.difference(start).inDays;
+    if (days < 0) {
+      return 1;
+    }
+    return (days ~/ 7 + 1).clamp(1, 25);
+  }
+
+  DateTime _firstMondayOfMonth(int year, int month) {
+    var date = DateTime(year, month);
+    while (date.weekday != DateTime.monday) {
+      date = date.add(const Duration(days: 1));
+    }
+    return date;
+  }
+}
+
+class _CourseBrief extends StatelessWidget {
+  const _CourseBrief({required this.course, required this.prominent});
+
+  final _HomeCourse course;
+  final bool prominent;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: prominent
+                ? colors.primaryContainer.withValues(alpha: 0.7)
+                : const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+            child: Text(
+              course.sections,
+              style: TextStyle(
+                color: prominent ? colors.primary : colors.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                course.title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '${course.timeText} · ${course.location}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+              if (course.teacher != '-') ...[
+                const SizedBox(height: 3),
+                Text(
+                  course.teacher,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeCourse {
+  const _HomeCourse({
+    required this.title,
+    required this.teacher,
+    required this.location,
+    required this.sections,
+    required this.startMinutes,
+    required this.endMinutes,
+  });
+
+  final String title;
+  final String teacher;
+  final String location;
+  final String sections;
+  final int startMinutes;
+  final int endMinutes;
+
+  String get timeText {
+    return '${_formatMinutes(startMinutes)}-${_formatMinutes(endMinutes)}';
+  }
+
+  static _HomeCourse fromMap(Map<String, dynamic> course) {
+    final sections = textValue(course['sections'], fallback: textValue(course['slot']));
+    final range = _timeRangeForSections(sections);
+    return _HomeCourse(
+      title: textValue(course['title'], fallback: '未命名课程'),
+      teacher: textValue(course['teacher']),
+      location: textValue(course['location']),
+      sections: sections,
+      startMinutes: range.$1,
+      endMinutes: range.$2,
+    );
+  }
+
+  static String _formatMinutes(int minutes) {
+    final hour = minutes ~/ 60;
+    final minute = minutes % 60;
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  }
+
+  static (int, int) _timeRangeForSections(String sections) {
+    final numbers = RegExp(r'\d+')
+        .allMatches(sections)
+        .map((match) => int.tryParse(match.group(0) ?? ''))
+        .whereType<int>()
+        .toList();
+    final startSection = numbers.isEmpty ? 1 : numbers.first;
+    final endSection = numbers.isEmpty ? startSection : numbers.last;
+    return (
+      _sectionStart(startSection),
+      _sectionEnd(endSection),
+    );
+  }
+
+  static int _sectionStart(int section) {
+    const starts = {
+      1: 10 * 60,
+      2: 10 * 60 + 55,
+      3: 12 * 60,
+      4: 12 * 60 + 55,
+      5: 14 * 60 + 30,
+      6: 15 * 60 + 25,
+      7: 16 * 60 + 30,
+      8: 17 * 60 + 25,
+      9: 19 * 60 + 30,
+      10: 20 * 60 + 25,
+      11: 21 * 60 + 20,
+      12: 22 * 60 + 15,
+    };
+    return starts[section] ?? 23 * 60 + 59;
+  }
+
+  static int _sectionEnd(int section) {
+    const ends = {
+      1: 10 * 60 + 45,
+      2: 11 * 60 + 40,
+      3: 12 * 60 + 45,
+      4: 13 * 60 + 40,
+      5: 15 * 60 + 15,
+      6: 16 * 60 + 10,
+      7: 17 * 60 + 15,
+      8: 18 * 60 + 10,
+      9: 20 * 60 + 15,
+      10: 21 * 60 + 10,
+      11: 22 * 60 + 5,
+      12: 23 * 60,
+    };
+    return ends[section] ?? 23 * 60 + 59;
+  }
 }
 
 class _FeatureGrid extends StatelessWidget {
