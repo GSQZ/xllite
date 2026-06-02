@@ -41,6 +41,7 @@ class _ScheduleCalendar extends StatefulWidget {
 class _ScheduleCalendarState extends State<_ScheduleCalendar> {
   int? _selectedDay;
   int? _selectedWeek;
+  _ScheduleViewMode _viewMode = _ScheduleViewMode.agenda;
   late final DateTime _termStartDate;
 
   int get _currentDay {
@@ -74,6 +75,7 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     final selectedCourses = _coursesForDay(_currentDay);
     final selectedDay = _days[_currentDay];
     final selectedDate = _dateFor(_currentWeek, _currentDay);
+    final weeklyCourses = _coursesForWeek();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
@@ -100,23 +102,49 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
           courseCountForDay: (index) => _coursesForDay(index).length,
           onSelected: (index) => setState(() => _selectedDay = index),
         ),
-        const SizedBox(height: 22),
-        _DayTitle(
-          day: selectedDay.fullName,
-          date: selectedDate,
-          count: selectedCourses.length,
+        const SizedBox(height: 16),
+        _ScheduleModeSwitch(
+          value: _viewMode,
+          onChanged: (value) => setState(() => _viewMode = value),
         ),
-        const SizedBox(height: 14),
-        if (selectedCourses.isEmpty)
-          const EmptyPanel(
-            title: '这天没有课程',
-            subtitle: '可以切换上方星期查看其他课程。',
-            icon: Icons.event_available_outlined,
-          )
-        else
-          ...selectedCourses.map((course) {
-            return _AgendaCourseCard(course: _ScheduleCourse.fromMap(course));
-          }),
+        const SizedBox(height: 18),
+        if (_viewMode == _ScheduleViewMode.week) ...[
+          _WeekCalendarGrid(
+            days: _days,
+            selectedDay: _currentDay,
+            dateForDay: (index) => _dateFor(_currentWeek, index),
+            coursesForSlot: (dayIndex, slot) {
+              return weeklyCourses
+                  .where((course) {
+                    return course.dayIndex == dayIndex &&
+                        course.course.startMinutes == slot.startMinutes;
+                  })
+                  .map((course) => course.course)
+                  .toList();
+            },
+            onDaySelected: (index) => setState(() {
+              _selectedDay = index;
+              _viewMode = _ScheduleViewMode.agenda;
+            }),
+          ),
+        ] else ...[
+          _DayTitle(
+            day: selectedDay.fullName,
+            date: selectedDate,
+            count: selectedCourses.length,
+          ),
+          const SizedBox(height: 14),
+          if (selectedCourses.isEmpty)
+            const EmptyPanel(
+              title: '这天没有课程',
+              subtitle: '可以切换上方星期查看其他课程。',
+              icon: Icons.event_available_outlined,
+            )
+          else
+            ...selectedCourses.map((course) {
+              return _AgendaCourseCard(course: _ScheduleCourse.fromMap(course));
+            }),
+        ],
       ],
     );
   }
@@ -133,6 +161,28 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     }).toList();
 
     courses.sort((a, b) => _courseStart(a).compareTo(_courseStart(b)));
+    return courses;
+  }
+
+  List<_WeekCourse> _coursesForWeek() {
+    final courses = <_WeekCourse>[];
+    for (var dayIndex = 0; dayIndex < _days.length; dayIndex += 1) {
+      for (final course in _coursesForDay(dayIndex)) {
+        courses.add(
+          _WeekCourse(
+            dayIndex: dayIndex,
+            course: _ScheduleCourse.fromMap(course),
+          ),
+        );
+      }
+    }
+    courses.sort((a, b) {
+      final dayCompare = a.dayIndex.compareTo(b.dayIndex);
+      if (dayCompare != 0) {
+        return dayCompare;
+      }
+      return a.course.startMinutes.compareTo(b.course.startMinutes);
+    });
     return courses;
   }
 
@@ -275,11 +325,47 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
   }
 }
 
+enum _ScheduleViewMode { agenda, week }
+
+class _WeekCourse {
+  const _WeekCourse({required this.dayIndex, required this.course});
+
+  final int dayIndex;
+  final _ScheduleCourse course;
+}
+
 class _WeekDay {
   const _WeekDay(this.shortName, this.fullName);
 
   final String shortName;
   final String fullName;
+}
+
+class _WeekSlot {
+  const _WeekSlot(this.label, this.time, this.startMinutes);
+
+  final String label;
+  final String time;
+  final int startMinutes;
+}
+
+const _weekSlots = [
+  _WeekSlot('1-2', '10:00', 10 * 60),
+  _WeekSlot('3-4', '12:00', 12 * 60),
+  _WeekSlot('5-6', '16:00', 16 * 60),
+  _WeekSlot('7-8', '18:00', 18 * 60),
+  _WeekSlot('9-10', '20:30', 20 * 60 + 30),
+];
+
+Color _courseAccent(String value) {
+  const colors = [
+    Color(0xFF2563EB),
+    Color(0xFF059669),
+    Color(0xFFD97706),
+    Color(0xFF7C3AED),
+    Color(0xFFDC2626),
+  ];
+  return colors[value.hashCode.abs() % colors.length];
 }
 
 class _CalendarHeader extends StatelessWidget {
@@ -512,6 +598,424 @@ class _DayTitle extends StatelessWidget {
   }
 }
 
+class _ScheduleModeSwitch extends StatelessWidget {
+  const _ScheduleModeSwitch({required this.value, required this.onChanged});
+
+  final _ScheduleViewMode value;
+  final ValueChanged<_ScheduleViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(3),
+        child: Row(
+          children: [
+            _ScheduleModeButton(
+              label: '日程',
+              selected: value == _ScheduleViewMode.agenda,
+              onTap: () => onChanged(_ScheduleViewMode.agenda),
+            ),
+            _ScheduleModeButton(
+              label: '周视图',
+              selected: value == _ScheduleViewMode.week,
+              onTap: () => onChanged(_ScheduleViewMode.week),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleModeButton extends StatelessWidget {
+  const _ScheduleModeButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: selected ? colors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: selected ? colors.onSurface : colors.onSurfaceVariant,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WeekCalendarGrid extends StatelessWidget {
+  const _WeekCalendarGrid({
+    required this.days,
+    required this.selectedDay,
+    required this.dateForDay,
+    required this.coursesForSlot,
+    required this.onDaySelected,
+  });
+
+  final List<_WeekDay> days;
+  final int selectedDay;
+  final DateTime Function(int index) dateForDay;
+  final List<_ScheduleCourse> Function(int dayIndex, _WeekSlot slot)
+  coursesForSlot;
+  final ValueChanged<int> onDaySelected;
+
+  static const _headerHeight = 58.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final gridHeight = (screenHeight - 252).clamp(620.0, 760.0);
+    final slotHeight = (gridHeight - _headerHeight) / _weekSlots.length;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: 0.72),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const timeRailWidth = 38.0;
+            final dayColumnWidth =
+                (constraints.maxWidth - timeRailWidth) / days.length;
+
+            return SizedBox(
+              height: gridHeight,
+              width: constraints.maxWidth,
+              child: Column(
+                children: [
+                  _WeekCalendarHeaderRow(
+                    days: days,
+                    selectedDay: selectedDay,
+                    dateForDay: dateForDay,
+                    timeRailWidth: timeRailWidth,
+                    dayColumnWidth: dayColumnWidth,
+                    onDaySelected: onDaySelected,
+                  ),
+                  for (final slot in _weekSlots)
+                    _WeekCalendarSlotRow(
+                      slot: slot,
+                      days: days,
+                      timeRailWidth: timeRailWidth,
+                      dayColumnWidth: dayColumnWidth,
+                      slotHeight: slotHeight,
+                      coursesForSlot: coursesForSlot,
+                      onDaySelected: onDaySelected,
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _WeekCalendarHeaderRow extends StatelessWidget {
+  const _WeekCalendarHeaderRow({
+    required this.days,
+    required this.selectedDay,
+    required this.dateForDay,
+    required this.timeRailWidth,
+    required this.dayColumnWidth,
+    required this.onDaySelected,
+  });
+
+  final List<_WeekDay> days;
+  final int selectedDay;
+  final DateTime Function(int index) dateForDay;
+  final double timeRailWidth;
+  final double dayColumnWidth;
+  final ValueChanged<int> onDaySelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      height: _WeekCalendarGrid._headerHeight,
+      child: Row(
+        children: [
+          SizedBox(
+            width: timeRailWidth,
+            child: Icon(
+              Icons.view_week_outlined,
+              size: 16,
+              color: colors.outline,
+            ),
+          ),
+          for (var index = 0; index < days.length; index += 1)
+            InkWell(
+              onTap: () => onDaySelected(index),
+              child: Container(
+                width: dayColumnWidth,
+                decoration: BoxDecoration(
+                  color: index == selectedDay
+                      ? colors.primaryContainer.withValues(alpha: 0.24)
+                      : Colors.transparent,
+                  border: Border(
+                    left: BorderSide(color: colors.outlineVariant),
+                    bottom: BorderSide(color: colors.outlineVariant),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      days[index].shortName,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${dateForDay(index).day}',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeekCalendarSlotRow extends StatelessWidget {
+  const _WeekCalendarSlotRow({
+    required this.slot,
+    required this.days,
+    required this.timeRailWidth,
+    required this.dayColumnWidth,
+    required this.slotHeight,
+    required this.coursesForSlot,
+    required this.onDaySelected,
+  });
+
+  final _WeekSlot slot;
+  final List<_WeekDay> days;
+  final double timeRailWidth;
+  final double dayColumnWidth;
+  final double slotHeight;
+  final List<_ScheduleCourse> Function(int dayIndex, _WeekSlot slot)
+  coursesForSlot;
+  final ValueChanged<int> onDaySelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      height: slotHeight,
+      child: Row(
+        children: [
+          SizedBox(
+            width: timeRailWidth,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8, right: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    slot.time,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    slot.label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          for (var dayIndex = 0; dayIndex < days.length; dayIndex += 1)
+            _WeekCalendarCell(
+              width: dayColumnWidth,
+              height: slotHeight,
+              courses: coursesForSlot(dayIndex, slot),
+              onTap: () => onDaySelected(dayIndex),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeekCalendarCell extends StatelessWidget {
+  const _WeekCalendarCell({
+    required this.width,
+    required this.height,
+    required this.courses,
+    required this.onTap,
+  });
+
+  final double width;
+  final double height;
+  final List<_ScheduleCourse> courses;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: colors.outlineVariant),
+            bottom: BorderSide(color: colors.outlineVariant),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: courses.isEmpty
+              ? const SizedBox.shrink()
+              : Column(
+                  children: [
+                    _WeekCalendarCourseBlock(course: courses.first),
+                    if (courses.length > 1) ...[
+                      const SizedBox(height: 3),
+                      if (courses.length == 2)
+                        _WeekCalendarCourseBlock(course: courses[1])
+                      else
+                        _WeekHiddenCoursesBadge(count: courses.length - 1),
+                    ],
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WeekHiddenCoursesBadge extends StatelessWidget {
+  const _WeekHiddenCoursesBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      '+$count',
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
+class _WeekCalendarCourseBlock extends StatelessWidget {
+  const _WeekCalendarCourseBlock({required this.course});
+
+  final _ScheduleCourse course;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _courseAccent(course.title);
+
+    return Expanded(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: accent.withValues(alpha: 0.18)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                course.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w900,
+                  height: 1.06,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                course.location,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 10,
+                  height: 1.06,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ScheduleCourse {
   const _ScheduleCourse({
     required this.title,
@@ -606,7 +1110,10 @@ class _AgendaCourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final accent = _accentFor(course.title);
+    final accent = _courseAccent(course.title);
+    final teacherTag = course.teacher == '-' || course.teacher == '教师未标注'
+        ? ''
+        : ' #${course.teacher}';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -645,8 +1152,19 @@ class _AgendaCourseCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            course.title,
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(text: course.title),
+                                TextSpan(
+                                  text: teacherTag,
+                                  style: TextStyle(
+                                    color: colors.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleMedium
@@ -697,29 +1215,13 @@ class _AgendaCourseCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 9),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            course.weeks,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: colors.onSurfaceVariant),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            course.teacher,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.end,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: colors.onSurfaceVariant),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      course.weeks,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -729,17 +1231,6 @@ class _AgendaCourseCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _accentFor(String value) {
-    const colors = [
-      Color(0xFF2563EB),
-      Color(0xFF059669),
-      Color(0xFFD97706),
-      Color(0xFF7C3AED),
-      Color(0xFFDC2626),
-    ];
-    return colors[value.hashCode.abs() % colors.length];
   }
 }
 
