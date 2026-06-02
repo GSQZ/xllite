@@ -39,8 +39,16 @@ class _ScheduleCalendar extends StatefulWidget {
 }
 
 class _ScheduleCalendarState extends State<_ScheduleCalendar> {
-  late int _selectedDay;
-  late int _selectedWeek;
+  int? _selectedDay;
+  int? _selectedWeek;
+
+  int get _currentDay {
+    return _selectedDay ??= _initialDayIndex();
+  }
+
+  int get _currentWeek {
+    return _selectedWeek ??= _initialTeachingWeek(widget.term);
+  }
 
   @override
   void initState() {
@@ -61,8 +69,8 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedCourses = _coursesForDay(_selectedDay);
-    final selectedDay = _days[_selectedDay];
+    final selectedCourses = _coursesForDay(_currentDay);
+    final selectedDay = _days[_currentDay];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -71,17 +79,17 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
           term: widget.term,
           totalCount: widget.courses.length,
           todayIndex: _initialDayIndex(),
-          selectedWeek: _selectedWeek,
+          selectedWeek: _currentWeek,
         ),
         const SizedBox(height: 14),
         _WeekCalibrator(
-          selectedWeek: _selectedWeek,
+          selectedWeek: _currentWeek,
           onChanged: (week) => setState(() => _selectedWeek = week),
         ),
         const SizedBox(height: 14),
         _WeekStrip(
           days: _days,
-          selectedDay: _selectedDay,
+          selectedDay: _currentDay,
           courseCountForDay: (index) => _coursesForDay(index).length,
           onSelected: (index) => setState(() => _selectedDay = index),
         ),
@@ -107,7 +115,7 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
       final matchesDay = courseDay.contains(day.fullName) ||
           courseDay.contains('周${day.shortName}') ||
           courseDay.contains('星期${day.shortName}');
-      return matchesDay && _courseMatchesWeek(course, _selectedWeek);
+      return matchesDay && _courseMatchesWeek(course, _currentWeek);
     }).toList();
 
     courses.sort((a, b) => _courseStart(a).compareTo(_courseStart(b)));
