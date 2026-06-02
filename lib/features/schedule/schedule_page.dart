@@ -721,9 +721,7 @@ class _WeekCalendarGrid extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            const timeRailWidth = 38.0;
-            final dayColumnWidth =
-                (constraints.maxWidth - timeRailWidth) / days.length;
+            final dayColumnWidth = constraints.maxWidth / days.length;
 
             return SizedBox(
               height: gridHeight,
@@ -734,7 +732,6 @@ class _WeekCalendarGrid extends StatelessWidget {
                     days: days,
                     selectedDay: selectedDay,
                     dateForDay: dateForDay,
-                    timeRailWidth: timeRailWidth,
                     dayColumnWidth: dayColumnWidth,
                     onDaySelected: onDaySelected,
                   ),
@@ -742,7 +739,6 @@ class _WeekCalendarGrid extends StatelessWidget {
                     _WeekCalendarSlotRow(
                       slot: slot,
                       days: days,
-                      timeRailWidth: timeRailWidth,
                       dayColumnWidth: dayColumnWidth,
                       slotHeight: slotHeight,
                       coursesForSlot: coursesForSlot,
@@ -763,7 +759,6 @@ class _WeekCalendarHeaderRow extends StatelessWidget {
     required this.days,
     required this.selectedDay,
     required this.dateForDay,
-    required this.timeRailWidth,
     required this.dayColumnWidth,
     required this.onDaySelected,
   });
@@ -771,7 +766,6 @@ class _WeekCalendarHeaderRow extends StatelessWidget {
   final List<_WeekDay> days;
   final int selectedDay;
   final DateTime Function(int index) dateForDay;
-  final double timeRailWidth;
   final double dayColumnWidth;
   final ValueChanged<int> onDaySelected;
 
@@ -783,14 +777,6 @@ class _WeekCalendarHeaderRow extends StatelessWidget {
       height: _WeekCalendarGrid._headerHeight,
       child: Row(
         children: [
-          SizedBox(
-            width: timeRailWidth,
-            child: Icon(
-              Icons.view_week_outlined,
-              size: 16,
-              color: colors.outline,
-            ),
-          ),
           for (var index = 0; index < days.length; index += 1)
             InkWell(
               onTap: () => onDaySelected(index),
@@ -836,7 +822,6 @@ class _WeekCalendarSlotRow extends StatelessWidget {
   const _WeekCalendarSlotRow({
     required this.slot,
     required this.days,
-    required this.timeRailWidth,
     required this.dayColumnWidth,
     required this.slotHeight,
     required this.coursesForSlot,
@@ -845,7 +830,6 @@ class _WeekCalendarSlotRow extends StatelessWidget {
 
   final _WeekSlot slot;
   final List<_WeekDay> days;
-  final double timeRailWidth;
   final double dayColumnWidth;
   final double slotHeight;
   final List<_ScheduleCourse> Function(int dayIndex, _WeekSlot slot)
@@ -854,42 +838,16 @@ class _WeekCalendarSlotRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return SizedBox(
       height: slotHeight,
       child: Row(
         children: [
-          SizedBox(
-            width: timeRailWidth,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 8, right: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    slot.time,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    slot.label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
           for (var dayIndex = 0; dayIndex < days.length; dayIndex += 1)
             _WeekCalendarCell(
               width: dayColumnWidth,
               height: slotHeight,
               courses: coursesForSlot(dayIndex, slot),
+              slot: slot,
               onTap: () => onDaySelected(dayIndex),
             ),
         ],
@@ -903,12 +861,14 @@ class _WeekCalendarCell extends StatelessWidget {
     required this.width,
     required this.height,
     required this.courses,
+    required this.slot,
     required this.onTap,
   });
 
   final double width;
   final double height;
   final List<_ScheduleCourse> courses;
+  final _WeekSlot slot;
   final VoidCallback onTap;
 
   @override
@@ -932,11 +892,11 @@ class _WeekCalendarCell extends StatelessWidget {
               ? const SizedBox.shrink()
               : Column(
                   children: [
-                    _WeekCalendarCourseBlock(course: courses.first),
+                    _WeekCalendarCourseBlock(course: courses.first, slot: slot),
                     if (courses.length > 1) ...[
                       const SizedBox(height: 3),
                       if (courses.length == 2)
-                        _WeekCalendarCourseBlock(course: courses[1])
+                        _WeekCalendarCourseBlock(course: courses[1], slot: slot)
                       else
                         _WeekHiddenCoursesBadge(count: courses.length - 1),
                     ],
@@ -967,9 +927,10 @@ class _WeekHiddenCoursesBadge extends StatelessWidget {
 }
 
 class _WeekCalendarCourseBlock extends StatelessWidget {
-  const _WeekCalendarCourseBlock({required this.course});
+  const _WeekCalendarCourseBlock({required this.course, required this.slot});
 
   final _ScheduleCourse course;
+  final _WeekSlot slot;
 
   @override
   Widget build(BuildContext context) {
@@ -988,23 +949,24 @@ class _WeekCalendarCourseBlock extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
+                slot.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: accent,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
                 course.title,
-                maxLines: 2,
+                maxLines: 5,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: accent,
                   fontWeight: FontWeight.w900,
-                  height: 1.06,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                course.location,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 10,
                   height: 1.06,
                 ),
               ),
