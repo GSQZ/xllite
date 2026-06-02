@@ -73,14 +73,13 @@ class _HomePageState extends ConsumerState<HomePage> {
 
           final data = snapshot.data!;
           final name = textValue(data.profile['name'], fallback: '同学');
-          final major = textValue(data.profile['major'], fallback: '新疆理工学院');
 
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _WelcomePanel(name: name, subtitle: major, online: data.health),
+                _WelcomeHeader(name: name),
                 const SizedBox(height: 16),
                 Text(
                   '常用功能',
@@ -90,12 +89,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 const SizedBox(height: 10),
                 const _FeatureGrid(),
-                const SizedBox(height: 16),
-                const InfoCard(
-                  icon: Icons.info_outline,
-                  title: '民间开发版本',
-                  subtitle: '新理Lite 不代表新疆理工学院官方应用，账号凭据只保存在本机。',
-                ),
               ],
             ),
           );
@@ -112,69 +105,53 @@ class HomeSnapshot {
   final Map<String, dynamic> profile;
 }
 
-class _WelcomePanel extends StatelessWidget {
-  const _WelcomePanel({
-    required this.name,
-    required this.subtitle,
-    required this.online,
-  });
+class _WelcomeHeader extends StatelessWidget {
+  const _WelcomeHeader({required this.name});
 
   final String name;
-  final String subtitle;
-  final bool online;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$name，今天看点什么',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 14),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: online ? const Color(0xFFEFFAF5) : const Color(0xFFFFF7ED),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      child: Text(
-                        online ? '接口在线' : '接口异常',
-                        style: TextStyle(
-                          color: online ? const Color(0xFF047857) : const Color(0xFFC2410C),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Icon(Icons.dashboard_outlined, color: colors.primary, size: 42),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 4, 2, 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$name同学，${_greeting()}好',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '新理Lite 是民间开发版本，不代表学校官方应用。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+          ),
+        ],
       ),
     );
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 5) {
+      return '夜深了';
+    }
+    if (hour < 11) {
+      return '上午';
+    }
+    if (hour < 14) {
+      return '中午';
+    }
+    if (hour < 18) {
+      return '下午';
+    }
+    return '晚上';
   }
 }
 
