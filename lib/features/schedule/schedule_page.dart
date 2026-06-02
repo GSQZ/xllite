@@ -125,7 +125,8 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     final day = _days[dayIndex];
     final courses = widget.courses.where((course) {
       final courseDay = textValue(course['day'], fallback: '');
-      final matchesDay = courseDay.contains(day.fullName) ||
+      final matchesDay =
+          courseDay.contains(day.fullName) ||
           courseDay.contains('周${day.shortName}') ||
           courseDay.contains('星期${day.shortName}');
       return matchesDay && _courseMatchesWeek(course, _currentWeek);
@@ -143,14 +144,7 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     }
 
     final slot = textValue(course['slot'], fallback: '');
-    const slotOrder = {
-      '第一': 1,
-      '第二': 3,
-      '第三': 5,
-      '第四': 7,
-      '第五': 9,
-      '第六': 11,
-    };
+    const slotOrder = {'第一': 1, '第二': 3, '第三': 5, '第四': 7, '第五': 9, '第六': 11};
     for (final entry in slotOrder.entries) {
       if (slot.contains(entry.key)) {
         return entry.value;
@@ -194,8 +188,11 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     final match = RegExp(r'(\d{4})-(\d{4})-(\d)').firstMatch(term);
     if (match == null) {
       final now = DateTime.now();
-      return DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: _initialDayIndex()));
+      return DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(Duration(days: _initialDayIndex()));
     }
 
     final firstYear = int.tryParse(match.group(1) ?? '');
@@ -203,8 +200,11 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     final termIndex = int.tryParse(match.group(3) ?? '');
     if (firstYear == null || secondYear == null || termIndex == null) {
       final now = DateTime.now();
-      return DateTime(now.year, now.month, now.day)
-          .subtract(Duration(days: _initialDayIndex()));
+      return DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(Duration(days: _initialDayIndex()));
     }
 
     return termIndex == 1
@@ -237,11 +237,13 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
         .replaceAll('至', '-')
         .replaceAll('到', '-');
 
-    if ((normalized.contains('单') || normalized.toLowerCase().contains('odd')) &&
+    if ((normalized.contains('单') ||
+            normalized.toLowerCase().contains('odd')) &&
         week.isEven) {
       return false;
     }
-    if ((normalized.contains('双') || normalized.toLowerCase().contains('even')) &&
+    if ((normalized.contains('双') ||
+            normalized.toLowerCase().contains('even')) &&
         week.isOdd) {
       return false;
     }
@@ -308,17 +310,17 @@ class _CalendarHeader extends StatelessWidget {
               Text(
                 '第 $selectedWeek 周',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 3),
               Text(
                 term,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
               ),
             ],
           ),
@@ -389,7 +391,9 @@ class _WeekStrip extends StatelessWidget {
   }
 
   bool _isSameDate(DateTime left, DateTime right) {
-    return left.year == right.year && left.month == right.month && left.day == right.day;
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
   }
 }
 
@@ -418,8 +422,8 @@ class _WeekDayButton extends StatelessWidget {
     final dotColor = selected
         ? colors.onPrimary
         : count > 0
-            ? colors.primary
-            : colors.outlineVariant;
+        ? colors.primary
+        : colors.outlineVariant;
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
@@ -478,11 +482,7 @@ class _WeekDayButton extends StatelessWidget {
 }
 
 class _DayTitle extends StatelessWidget {
-  const _DayTitle({
-    required this.day,
-    required this.date,
-    required this.count,
-  });
+  const _DayTitle({required this.day, required this.date, required this.count});
 
   final String day;
   final DateTime date;
@@ -495,17 +495,17 @@ class _DayTitle extends StatelessWidget {
         Expanded(
           child: Text(
             day,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
         ),
         Text(
           '${date.month}月${date.day}日 · $count 门课',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -533,7 +533,10 @@ class _ScheduleCourse {
   String get endText => _formatMinutes(endMinutes);
 
   static _ScheduleCourse fromMap(Map<String, dynamic> course) {
-    final sections = textValue(course['sections'], fallback: textValue(course['slot']));
+    final sections = textValue(
+      course['sections'],
+      fallback: textValue(course['slot']),
+    );
     final range = _timeRangeForSections(sections);
     return _ScheduleCourse(
       title: textValue(course['title'], fallback: '未命名课程'),
@@ -611,11 +614,8 @@ class _AgendaCourseCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border(
-            left: BorderSide(color: accent, width: 4),
-            top: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.72)),
-            right: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.72)),
-            bottom: BorderSide(color: colors.outlineVariant.withValues(alpha: 0.72)),
+          border: Border.all(
+            color: colors.outlineVariant.withValues(alpha: 0.72),
           ),
           boxShadow: [
             BoxShadow(
@@ -625,87 +625,104 @@ class _AgendaCourseCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      course.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            height: 1.18,
-                          ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  _TimePill(
-                    start: course.startText,
-                    end: course.endText,
-                    color: accent,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 11),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(11),
+              Positioned.fill(
+                right: null,
+                child: ColoredBox(
+                  color: accent,
+                  child: const SizedBox(width: 4),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.place_outlined, size: 16, color: accent),
-                      const SizedBox(width: 7),
-                      Expanded(
-                        child: Text(
-                          course.location,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                height: 1.28,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(17, 12, 13, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            course.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.18,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _TimePill(
+                          start: course.startText,
+                          end: course.endText,
+                          color: accent,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 11),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 9,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.place_outlined, size: 16, color: accent),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                course.location,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.28,
+                                    ),
                               ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 9),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            course.weeks,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colors.onSurfaceVariant),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            course.teacher,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colors.onSurfaceVariant),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 9),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      course.weeks,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      course.teacher,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
@@ -750,9 +767,9 @@ class _TimePill extends StatelessWidget {
           '$start-$end',
           maxLines: 1,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
+            color: color,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     );
