@@ -120,15 +120,9 @@ class _WelcomeHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '更轻一点，更好用一点。',
+            _greetingFor(name),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colors.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            _greetingFor(name),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
           ),
