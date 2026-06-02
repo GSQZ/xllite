@@ -120,7 +120,7 @@ class _WelcomeHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$name同学，${_greeting()}好',
+            '新理Lite',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -132,26 +132,33 @@ class _WelcomeHeader extends StatelessWidget {
                   color: colors.onSurfaceVariant,
                 ),
           ),
+          const SizedBox(height: 18),
+          Text(
+            _greetingFor(name),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
         ],
       ),
     );
   }
 
-  String _greeting() {
+  String _greetingFor(String name) {
     final hour = DateTime.now().hour;
     if (hour < 5) {
-      return '夜深了';
+      return '$name同学，夜深了，早点休息';
     }
     if (hour < 11) {
-      return '上午';
+      return '$name同学，上午好';
     }
     if (hour < 14) {
-      return '中午';
+      return '$name同学，中午好';
     }
     if (hour < 18) {
-      return '下午';
+      return '$name同学，下午好';
     }
-    return '晚上';
+    return '$name同学，晚上好';
   }
 }
 
