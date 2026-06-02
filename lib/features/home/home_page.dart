@@ -4,8 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/xjit_api_client.dart';
 import '../../api/xjit_features.dart';
 import '../../auth/auth_controller.dart';
+import '../card/card_page.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
+import '../electricity/electricity_page.dart';
+import '../exams/exams_page.dart';
+import '../grades/grades_page.dart';
+import '../schedule/schedule_page.dart';
+import '../settings/settings_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -177,13 +183,43 @@ class _FeatureGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      _FeatureShortcut(Icons.calendar_month_outlined, '课表', '本周课程'),
-      _FeatureShortcut(Icons.event_note_outlined, '考试', '安排和座位'),
-      _FeatureShortcut(Icons.credit_card_outlined, '校园卡', '余额流水'),
-      _FeatureShortcut(Icons.bolt_outlined, '电费', '宿舍余电'),
-      _FeatureShortcut(Icons.school_outlined, '成绩', '学分绩点'),
-      _FeatureShortcut(Icons.person_outline, '信息', '个人资料'),
+    final items = [
+      _FeatureShortcut(
+        Icons.calendar_month_outlined,
+        '课表',
+        '本周课程',
+        onTap: () => _open(context, const SchedulePage()),
+      ),
+      _FeatureShortcut(
+        Icons.event_note_outlined,
+        '考试',
+        '安排和座位',
+        onTap: () => _open(context, const ExamsPage()),
+      ),
+      _FeatureShortcut(
+        Icons.credit_card_outlined,
+        '校园卡',
+        '余额流水',
+        onTap: () => _open(context, const CardPage()),
+      ),
+      _FeatureShortcut(
+        Icons.bolt_outlined,
+        '电费',
+        '宿舍余电',
+        onTap: () => _open(context, const ElectricityPage()),
+      ),
+      _FeatureShortcut(
+        Icons.school_outlined,
+        '成绩',
+        '学分绩点',
+        onTap: () => _open(context, const GradesPage()),
+      ),
+      _FeatureShortcut(
+        Icons.person_outline,
+        '我的',
+        '账号设置',
+        onTap: () => _open(context, const SettingsPage()),
+      ),
     ];
 
     return GridView.builder(
@@ -199,36 +235,45 @@ class _FeatureGrid extends StatelessWidget {
       itemBuilder: (context, index) => items[index],
     );
   }
+
+  void _open(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
 }
 
 class _FeatureShortcut extends StatelessWidget {
-  const _FeatureShortcut(this.icon, this.title, this.subtitle);
+  const _FeatureShortcut(this.icon, this.title, this.subtitle, {this.onTap});
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
