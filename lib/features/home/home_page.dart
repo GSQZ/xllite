@@ -502,17 +502,6 @@ class _NextCourseBrief extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
         ),
-        if (course.teacher != '-') ...[
-          const SizedBox(height: 3),
-          Text(
-            course.teacher,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-          ),
-        ],
       ],
     );
   }
