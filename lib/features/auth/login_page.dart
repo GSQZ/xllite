@@ -181,9 +181,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _submit() async {
     setState(() => _error = null);
-    await ref.read(authControllerProvider.notifier).signIn(
-          username: _usernameController.text,
-          password: _passwordController.text,
-        );
+    try {
+      await ref.read(authControllerProvider.notifier).signIn(
+            username: _usernameController.text,
+            password: _passwordController.text,
+          );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _error = error.toString());
+    }
   }
 }

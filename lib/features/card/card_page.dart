@@ -51,7 +51,11 @@ class _CardPageState extends ConsumerState<CardPage> {
 
   Future<void> _refresh() async {
     setState(() => _future = _load());
-    await _future;
+    try {
+      await _future;
+    } catch (_) {
+      // FutureBuilder owns the visible error state.
+    }
   }
 
   @override

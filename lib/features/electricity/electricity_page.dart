@@ -68,7 +68,11 @@ class _ElectricityPageState extends ConsumerState<ElectricityPage> {
 
   Future<void> _query() async {
     setState(() => _future = _load(_roomController.text));
-    await _future;
+    try {
+      await _future;
+    } catch (_) {
+      // FutureBuilder owns the visible error state.
+    }
   }
 
   @override
