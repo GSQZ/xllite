@@ -39,7 +39,15 @@ class _ScheduleCalendar extends StatefulWidget {
 }
 
 class _ScheduleCalendarState extends State<_ScheduleCalendar> {
-  late int _selectedDay = _initialDayIndex();
+  late int _selectedDay;
+  late int _selectedWeek;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = _initialDayIndex();
+    _selectedWeek = _initialTeachingWeek(widget.term);
+  }
 
   static const _days = [
     _WeekDay('一', '星期一'),
@@ -63,6 +71,12 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
           term: widget.term,
           totalCount: widget.courses.length,
           todayIndex: _initialDayIndex(),
+          selectedWeek: _selectedWeek,
+        ),
+        const SizedBox(height: 14),
+        _WeekCalibrator(
+          selectedWeek: _selectedWeek,
+          onChanged: (week) => setState(() => _selectedWeek = week),
         ),
         const SizedBox(height: 14),
         _WeekStrip(
@@ -90,9 +104,10 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
     final day = _days[dayIndex];
     final courses = widget.courses.where((course) {
       final courseDay = textValue(course['day'], fallback: '');
-      return courseDay.contains(day.fullName) ||
+      final matchesDay = courseDay.contains(day.fullName) ||
           courseDay.contains('周${day.shortName}') ||
           courseDay.contains('星期${day.shortName}');
+      return matchesDay && _courseMatchesWeek(course, _selectedWeek);
     }).toList();
 
     courses.sort((a, b) => _courseStart(a).compareTo(_courseStart(b)));
@@ -129,6 +144,86 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
         ? weekday - 1
         : 0;
   }
+
+  static int _initialTeachingWeek(String term) {
+    final now = DateTime.now();
+    final match = RegExp(r'(\d{4})-(\d{4})-(\d)').firstMatch(term);
+    if (match == null) {
+      return 1;
+    }
+
+    final firstYear = int.tryParse(match.group(1) ?? '');
+    final secondYear = int.tryParse(match.group(2) ?? '');
+    final termIndex = int.tryParse(match.group(3) ?? '');
+    if (firstYear == null || secondYear == null || termIndex == null) {
+      return 1;
+    }
+
+    final start = termIndex == 1
+        ? _firstMondayOfMonth(firstYear, DateTime.september)
+        : _firstMondayOfMonth(secondYear, DateTime.march);
+    final days = now.difference(start).inDays;
+    if (days < 0) {
+      return 1;
+    }
+    return (days ~/ 7 + 1).clamp(1, 25);
+  }
+
+  static DateTime _firstMondayOfMonth(int year, int month) {
+    var date = DateTime(year, month);
+    while (date.weekday != DateTime.monday) {
+      date = date.add(const Duration(days: 1));
+    }
+    return date;
+  }
+
+  bool _courseMatchesWeek(Map<String, dynamic> course, int week) {
+    final weeks = textValue(course['weeks'], fallback: '');
+    if (weeks.isEmpty || weeks == '-') {
+      return true;
+    }
+    return _weekTextContainsWeek(weeks, week);
+  }
+
+  bool _weekTextContainsWeek(String text, int week) {
+    final normalized = text
+        .replaceAll('－', '-')
+        .replaceAll('—', '-')
+        .replaceAll('~', '-')
+        .replaceAll('～', '-')
+        .replaceAll('至', '-')
+        .replaceAll('到', '-');
+
+    if ((normalized.contains('单') || normalized.toLowerCase().contains('odd')) &&
+        week.isEven) {
+      return false;
+    }
+    if ((normalized.contains('双') || normalized.toLowerCase().contains('even')) &&
+        week.isOdd) {
+      return false;
+    }
+
+    var withoutRanges = normalized;
+    var hasNumbers = false;
+    for (final match in RegExp(r'(\d+)\s*-\s*(\d+)').allMatches(normalized)) {
+      hasNumbers = true;
+      final start = int.tryParse(match.group(1) ?? '');
+      final end = int.tryParse(match.group(2) ?? '');
+      if (start != null && end != null && week >= start && week <= end) {
+        return true;
+      }
+      withoutRanges = withoutRanges.replaceFirst(match.group(0) ?? '', ' ');
+    }
+
+    for (final match in RegExp(r'\d+').allMatches(withoutRanges)) {
+      hasNumbers = true;
+      if (int.tryParse(match.group(0) ?? '') == week) {
+        return true;
+      }
+    }
+
+    return !hasNumbers;
+  }
 }
 
 class _WeekDay {
@@ -143,11 +238,13 @@ class _TermHeader extends StatelessWidget {
     required this.term,
     required this.totalCount,
     required this.todayIndex,
+    required this.selectedWeek,
   });
 
   final String term;
   final int totalCount;
   final int todayIndex;
+  final int selectedWeek;
 
   @override
   Widget build(BuildContext context) {
@@ -180,13 +277,67 @@ class _TermHeader extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '共 $totalCount 条课程 · 今天星期${_ScheduleCalendarState._days[todayIndex].shortName}',
+                    '第 $selectedWeek 周 · 今天星期${_ScheduleCalendarState._days[todayIndex].shortName} · 共 $totalCount 条课程',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: colors.onSurfaceVariant,
                         ),
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WeekCalibrator extends StatelessWidget {
+  const _WeekCalibrator({
+    required this.selectedWeek,
+    required this.onChanged,
+  });
+
+  final int selectedWeek;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: selectedWeek <= 1 ? null : () => onChanged(selectedWeek - 1),
+              icon: const Icon(Icons.chevron_left),
+              tooltip: '上一周',
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    '第 $selectedWeek 周',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '按周次过滤课程',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: selectedWeek >= 25 ? null : () => onChanged(selectedWeek + 1),
+              icon: const Icon(Icons.chevron_right),
+              tooltip: '下一周',
             ),
           ],
         ),
