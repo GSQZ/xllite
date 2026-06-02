@@ -60,6 +60,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('新理Lite')),
       body: FutureBuilder<HomeSnapshot>(
         future: _future,
         builder: (context, snapshot) {
@@ -119,19 +120,12 @@ class _WelcomeHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '新理Lite',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '新理Lite 是民间开发版本，不代表学校官方应用。',
+            '更轻一点，更好用一点。',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           Text(
             _greetingFor(name),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
