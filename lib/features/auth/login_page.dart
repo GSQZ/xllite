@@ -54,21 +54,44 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '新理Lite',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '新疆理工学院校园服务民间版',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  Row(
+                    children: [
+                      Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F766E),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        child: const Center(
+                          child: Text(
+                            '新',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '新理Lite',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text('新疆理工学院校园服务民间版'),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 42),
+                  const SizedBox(height: 34),
                   TextField(
                     controller: _usernameController,
                     keyboardType: TextInputType.number,
@@ -103,8 +126,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     const SizedBox(height: 14),
                     DecoratedBox(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7F7),
-                        borderRadius: BorderRadius.circular(10),
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFECACA)),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -127,18 +151,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   SizedBox(
                     width: double.infinity,
                     height: 50,
-                    child: FilledButton(
+                    child: FilledButton.icon(
                       onPressed: isLoading ? null : _submit,
-                      child: isLoading
+                      icon: isLoading
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('登录'),
+                          : const Icon(Icons.login),
+                      label: Text(isLoading ? '正在验证' : '登录'),
                     ),
                   ),
                   const SizedBox(height: 16),
