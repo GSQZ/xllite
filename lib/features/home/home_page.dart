@@ -243,17 +243,22 @@ class _TodayCoursePanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _CourseStatusPill(
-              label: next == null ? '正在上课' : '下一节课',
-              active: next == null && active != null,
-            ),
             if (active != null && next != null) ...[
-              const SizedBox(height: 8),
               _CurrentCourseHint(course: active),
+              const SizedBox(height: 10),
             ],
-            const SizedBox(height: 10),
-            if (next != null) _NextCourseBrief(course: next),
-            if (next == null && active != null) _NextCourseBrief(course: active),
+            if (next != null)
+              _NextCourseBrief(
+                course: next,
+                label: '下一节课',
+                active: false,
+              ),
+            if (next == null && active != null)
+              _NextCourseBrief(
+                course: active,
+                label: '正在上课',
+                active: true,
+              ),
           ],
         ),
       ),
@@ -398,36 +403,6 @@ class _TodayCoursePanel extends StatelessWidget {
   }
 }
 
-class _CourseStatusPill extends StatelessWidget {
-  const _CourseStatusPill({required this.label, required this.active});
-
-  final String label;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: active ? colors.primary : colors.primaryContainer.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? colors.onPrimary : colors.primary,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _CurrentCourseHint extends StatelessWidget {
   const _CurrentCourseHint({required this.course});
 
@@ -458,9 +433,15 @@ class _CurrentCourseHint extends StatelessWidget {
 }
 
 class _NextCourseBrief extends StatelessWidget {
-  const _NextCourseBrief({required this.course});
+  const _NextCourseBrief({
+    required this.course,
+    required this.label,
+    required this.active,
+  });
 
   final _HomeCourse course;
+  final String label;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
@@ -469,34 +450,64 @@ class _NextCourseBrief extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          course.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+        Row(
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: active ? colors.primary : colors.onSurfaceVariant,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const Spacer(),
+            Text(
+              course.timeText,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _CompactCourseMeta(text: '${course.sections} · ${course.timeText}'),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.primaryContainer.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(9),
+                child: Icon(Icons.place_outlined, color: colors.primary, size: 22),
+              ),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 course.location,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
                     ),
               ),
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        Text(
+          '${course.title} · ${course.sections}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
         if (course.teacher != '-') ...[
-          const SizedBox(height: 5),
+          const SizedBox(height: 3),
           Text(
             course.teacher,
             maxLines: 1,
@@ -507,35 +518,6 @@ class _NextCourseBrief extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _CompactCourseMeta extends StatelessWidget {
-  const _CompactCourseMeta({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.primaryContainer.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: colors.primary,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
     );
   }
 }
