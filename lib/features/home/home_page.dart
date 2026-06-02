@@ -7,7 +7,6 @@ import '../../auth/auth_controller.dart';
 import '../card/card_page.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
-import '../electricity/electricity_page.dart';
 import '../exams/exams_page.dart';
 import '../grades/grades_page.dart';
 import '../schedule/schedule_page.dart';
@@ -22,6 +21,7 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   late Future<HomeSnapshot> _future;
+  static const _roomKey = 'last_room_query';
 
   @override
   void initState() {
@@ -39,7 +39,10 @@ class _HomePageState extends ConsumerState<HomePage> {
       throw const XjitApiException('请先登录');
     }
     final api = ref.read(xjitApiClientProvider);
-    final results = await Future.wait([
+    final storage = ref.read(secureStorageProvider);
+    final roomQuery = await storage.read(key: _roomKey);
+    final cleanRoomQuery = roomQuery?.trim();
+    final results = await Future.wait<Object?>([
       api.health(),
       api.run(
         XjitFeature.profile,
@@ -51,12 +54,49 @@ class _HomePageState extends ConsumerState<HomePage> {
         username: session.username,
         password: session.password,
       ),
+      _safeRun(
+        api,
+        XjitFeature.cardBalance,
+        username: session.username,
+        password: session.password,
+      ),
+      cleanRoomQuery == null || cleanRoomQuery.isEmpty
+          ? Future<Map<String, dynamic>?>.value()
+          : _safeRun(
+              api,
+              XjitFeature.electricityAccount,
+              username: session.username,
+              password: session.password,
+              params: {'roomQuery': cleanRoomQuery},
+            ),
     ]);
     return HomeSnapshot(
       health: results[0] as bool,
       profile: results[1] as Map<String, dynamic>,
       schedule: results[2] as Map<String, dynamic>,
+      cardBalance: results[3] as Map<String, dynamic>?,
+      electricity: results[4] as Map<String, dynamic>?,
+      roomQuery: cleanRoomQuery,
     );
+  }
+
+  Future<Map<String, dynamic>?> _safeRun(
+    XjitApiClient api,
+    XjitFeature feature, {
+    required String username,
+    required String password,
+    Map<String, dynamic> params = const {},
+  }) async {
+    try {
+      return await api.run(
+        feature,
+        username: username,
+        password: password,
+        params: params,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _refresh() async {
@@ -66,6 +106,30 @@ class _HomePageState extends ConsumerState<HomePage> {
     } catch (_) {
       // FutureBuilder owns the visible error state.
     }
+  }
+
+  Future<void> _bindElectricityRoom() async {
+    final storage = ref.read(secureStorageProvider);
+    final currentRoom = await storage.read(key: _roomKey);
+    if (!mounted) {
+      return;
+    }
+
+    final room = await showDialog<String>(
+      context: context,
+      builder: (context) => _RoomBindDialog(initialRoom: currentRoom ?? ''),
+    );
+    if (room == null) {
+      return;
+    }
+
+    final cleanRoom = room.trim();
+    if (cleanRoom.isEmpty) {
+      await storage.delete(key: _roomKey);
+    } else {
+      await storage.write(key: _roomKey, value: cleanRoom);
+    }
+    await _refresh();
   }
 
   @override
@@ -94,6 +158,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                 const SizedBox(height: 16),
                 _TodayCoursePanel(schedule: data.schedule),
                 const SizedBox(height: 16),
+                _CampusSummaryRow(
+                  cardBalance: data.cardBalance,
+                  electricity: data.electricity,
+                  roomQuery: data.roomQuery,
+                  onElectricityTap: _bindElectricityRoom,
+                ),
+                const SizedBox(height: 16),
                 Text(
                   '常用功能',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -101,7 +172,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                 ),
                 const SizedBox(height: 10),
-                const _FeatureGrid(),
+                _FeatureGrid(onElectricityTap: _bindElectricityRoom),
               ],
             ),
           );
@@ -116,11 +187,17 @@ class HomeSnapshot {
     required this.health,
     required this.profile,
     required this.schedule,
+    required this.cardBalance,
+    required this.electricity,
+    required this.roomQuery,
   });
 
   final bool health;
   final Map<String, dynamic> profile;
   final Map<String, dynamic> schedule;
+  final Map<String, dynamic>? cardBalance;
+  final Map<String, dynamic>? electricity;
+  final String? roomQuery;
 }
 
 class _WelcomeHeader extends StatelessWidget {
@@ -208,6 +285,215 @@ class _GreetingCopy {
 
   final String title;
   final String subtitle;
+}
+
+class _CampusSummaryRow extends StatelessWidget {
+  const _CampusSummaryRow({
+    required this.cardBalance,
+    required this.electricity,
+    required this.roomQuery,
+    required this.onElectricityTap,
+  });
+
+  final Map<String, dynamic>? cardBalance;
+  final Map<String, dynamic>? electricity;
+  final String? roomQuery;
+  final VoidCallback onElectricityTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cardText = _cardBalanceText();
+    final electricityText = _electricityText();
+    final hasRoom = roomQuery != null && roomQuery!.trim().isNotEmpty;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryTile(
+            title: '一卡通余额',
+            value: cardText,
+            hint: '校园卡',
+            icon: Icons.credit_card_outlined,
+            onTap: () => _open(context, const CardPage()),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _SummaryTile(
+            title: '宿舍电费',
+            value: electricityText,
+            hint: hasRoom ? roomQuery! : '点击绑定',
+            icon: Icons.bolt_outlined,
+            onTap: onElectricityTap,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _cardBalanceText() {
+    final accounts = mapList(cardBalance?['accounts']);
+    if (accounts.isEmpty) {
+      return '暂无';
+    }
+    final account = accounts.firstWhere(
+      (item) => textValue(item['balance']) != '-',
+      orElse: () => accounts.first,
+    );
+    final balance = textValue(account['balance']);
+    final unit = textValue(account['unit'], fallback: '元');
+    return balance == '-' ? '暂无' : '$balance$unit';
+  }
+
+  String _electricityText() {
+    if (roomQuery == null || roomQuery!.trim().isEmpty) {
+      return '未绑定';
+    }
+    final remaining = electricity?['remainingElectricity'] is Map
+        ? Map<String, dynamic>.from(electricity!['remainingElectricity'] as Map)
+        : const <String, dynamic>{};
+    final value = textValue(remaining['value']);
+    final unit = textValue(remaining['unit'], fallback: '度');
+    return value == '-' ? '暂无' : '$value$unit';
+  }
+
+  void _open(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+}
+
+class _RoomBindDialog extends StatefulWidget {
+  const _RoomBindDialog({required this.initialRoom});
+
+  final String initialRoom;
+
+  @override
+  State<_RoomBindDialog> createState() => _RoomBindDialogState();
+}
+
+class _RoomBindDialogState extends State<_RoomBindDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialRoom);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('绑定宿舍'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
+        decoration: const InputDecoration(
+          labelText: '宿舍号',
+          hintText: '例如 9#312',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        if (widget.initialRoom.trim().isNotEmpty)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(''),
+            child: const Text('解绑'),
+          ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('保存'),
+        ),
+      ],
+    );
+  }
+
+  void _submit() {
+    Navigator.of(context).pop(_controller.text);
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  const _SummaryTile({
+    required this.title,
+    required this.value,
+    required this.hint,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String value;
+  final String hint;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 18, color: colors.onSurfaceVariant),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 18,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                hint,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _TodayCoursePanel extends StatelessWidget {
@@ -595,7 +881,9 @@ class _HomeCourse {
 }
 
 class _FeatureGrid extends StatelessWidget {
-  const _FeatureGrid();
+  const _FeatureGrid({required this.onElectricityTap});
+
+  final VoidCallback onElectricityTap;
 
   @override
   Widget build(BuildContext context) {
@@ -622,7 +910,7 @@ class _FeatureGrid extends StatelessWidget {
         Icons.bolt_outlined,
         '电费',
         '宿舍余电',
-        onTap: () => _open(context, const ElectricityPage()),
+        onTap: onElectricityTap,
       ),
       _FeatureShortcut(
         Icons.school_outlined,
