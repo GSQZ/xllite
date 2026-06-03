@@ -6,6 +6,7 @@ enum XjitFeature {
   training('jw.training', '培养信息'),
   cardBalance('newcard.balance', '校园卡余额'),
   cardTransactions('newcard.transactions', '校园卡流水'),
+  campusPaymentCode('newcard.campus_code.qrcode', '校园付款码'),
   electricityAccount('newcard.electricity.account', '宿舍电费');
 
   const XjitFeature(this.value, this.title);
