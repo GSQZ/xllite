@@ -9,7 +9,9 @@ enum XjitFeature {
   campusPaymentCode('newcard.campus_code.qrcode', '校园付款码'),
   rechargeConfig('newcard.recharge.config', '一卡通充值配置'),
   rechargeCreateOrder('newcard.recharge.create_order', '一卡通充值下单'),
-  electricityAccount('newcard.electricity.account', '宿舍电费');
+  electricityAccount('newcard.electricity.account', '宿舍电费'),
+  electricityRechargeConfig('newcard.electricity.recharge.config', '宿舍电费充值配置'),
+  electricityRechargePay('newcard.electricity.recharge.pay', '宿舍电费充值支付');
 
   const XjitFeature(this.value, this.title);
 

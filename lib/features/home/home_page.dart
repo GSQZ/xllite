@@ -7,6 +7,7 @@ import '../../auth/auth_controller.dart';
 import '../card/card_page.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
+import '../electricity/electricity_page.dart';
 import '../exams/exams_page.dart';
 import '../grades/grades_page.dart';
 
@@ -28,7 +29,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<HomeSnapshot> _load() async {
-    final session = ref.read(authControllerProvider).when(
+    final session = ref
+        .read(authControllerProvider)
+        .when(
           data: (value) => value,
           error: (error, stackTrace) => null,
           loading: () => null,
@@ -98,9 +101,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    final future = _load();
+    setState(() {
+      _future = future;
+    });
     try {
-      await _future;
+      await future;
     } catch (_) {
       // FutureBuilder owns the visible error state.
     }
@@ -128,6 +134,25 @@ class _HomePageState extends ConsumerState<HomePage> {
       await storage.write(key: _roomKey, value: cleanRoom);
     }
     await _refresh();
+  }
+
+  Future<void> _openElectricity() async {
+    final storage = ref.read(secureStorageProvider);
+    final currentRoom = await storage.read(key: _roomKey);
+    if (!mounted) {
+      return;
+    }
+    if (currentRoom == null || currentRoom.trim().isEmpty) {
+      await _bindElectricityRoom();
+      return;
+    }
+
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ElectricityPage()));
+    if (mounted) {
+      await _refresh();
+    }
   }
 
   @override
@@ -160,14 +185,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                   cardBalance: data.cardBalance,
                   electricity: data.electricity,
                   roomQuery: data.roomQuery,
-                  onElectricityTap: _bindElectricityRoom,
+                  onElectricityTap: _openElectricity,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   '常用功能',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 const _FeatureGrid(),
@@ -233,15 +258,15 @@ class _WelcomeHeader extends StatelessWidget {
                   Text(
                     greeting.title,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     greeting.subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -408,10 +433,7 @@ class _RoomBindDialogState extends State<_RoomBindDialog> {
             onPressed: () => Navigator.of(context).pop(''),
             child: const Text('解绑'),
           ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('保存'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('保存')),
       ],
     );
   }
@@ -464,27 +486,27 @@ class _SummaryTile extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 3),
               Text(
                 hint,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
               ),
             ],
           ),
@@ -531,16 +553,9 @@ class _TodayCoursePanel extends StatelessWidget {
               _CurrentCourseHint(course: active),
               const SizedBox(height: 10),
             ],
-            if (next != null)
-              _NextCourseBrief(
-                course: next,
-                label: '下一节课',
-              ),
+            if (next != null) _NextCourseBrief(course: next, label: '下一节课'),
             if (next == null && active != null)
-              _NextCourseBrief(
-                course: active,
-                label: '正在上课',
-              ),
+              _NextCourseBrief(course: active, label: '正在上课'),
           ],
         ),
       ),
@@ -550,7 +565,9 @@ class _TodayCoursePanel extends StatelessWidget {
   List<_HomeCourse> _todayCourses() {
     final rawCourses = mapList(schedule['courses']);
     final now = DateTime.now();
-    final week = _initialTeachingWeek(textValue(schedule['term'], fallback: ''));
+    final week = _initialTeachingWeek(
+      textValue(schedule['term'], fallback: ''),
+    );
     final dayIndex = now.weekday - 1;
     if (dayIndex < 0 || dayIndex > 6) {
       return const [];
@@ -621,11 +638,13 @@ class _TodayCoursePanel extends StatelessWidget {
         .replaceAll('至', '-')
         .replaceAll('到', '-');
 
-    if ((normalized.contains('单') || normalized.toLowerCase().contains('odd')) &&
+    if ((normalized.contains('单') ||
+            normalized.toLowerCase().contains('odd')) &&
         week.isEven) {
       return false;
     }
-    if ((normalized.contains('双') || normalized.toLowerCase().contains('even')) &&
+    if ((normalized.contains('双') ||
+            normalized.toLowerCase().contains('even')) &&
         week.isOdd) {
       return false;
     }
@@ -696,7 +715,11 @@ class _CurrentCourseHint extends StatelessWidget {
 
     return Row(
       children: [
-        const Icon(Icons.radio_button_checked, size: 13, color: Color(0xFF10B981)),
+        const Icon(
+          Icons.radio_button_checked,
+          size: 13,
+          color: Color(0xFF10B981),
+        ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
@@ -704,9 +727,9 @@ class _CurrentCourseHint extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -715,10 +738,7 @@ class _CurrentCourseHint extends StatelessWidget {
 }
 
 class _NextCourseBrief extends StatelessWidget {
-  const _NextCourseBrief({
-    required this.course,
-    required this.label,
-  });
+  const _NextCourseBrief({required this.course, required this.label});
 
   final _HomeCourse course;
   final String label;
@@ -736,17 +756,17 @@ class _NextCourseBrief extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
+                color: colors.primary,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const Spacer(),
             Text(
               course.timeText,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -754,14 +774,18 @@ class _NextCourseBrief extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.place_outlined, size: 18, color: colors.onSurfaceVariant),
+            Icon(
+              Icons.place_outlined,
+              size: 18,
+              color: colors.onSurfaceVariant,
+            ),
             const SizedBox(width: 8),
             Text(
               '待会儿去',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(width: 7),
             Expanded(
@@ -769,9 +793,9 @@ class _NextCourseBrief extends StatelessWidget {
                 location,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
           ],
@@ -782,9 +806,9 @@ class _NextCourseBrief extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colors.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
+            color: colors.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );
@@ -813,7 +837,10 @@ class _HomeCourse {
   }
 
   static _HomeCourse fromMap(Map<String, dynamic> course) {
-    final sections = textValue(course['sections'], fallback: textValue(course['slot']));
+    final sections = textValue(
+      course['sections'],
+      fallback: textValue(course['slot']),
+    );
     final range = _timeRangeForSections(sections);
     return _HomeCourse(
       title: textValue(course['title'], fallback: '未命名课程'),
@@ -839,10 +866,7 @@ class _HomeCourse {
         .toList();
     final startSection = numbers.isEmpty ? 1 : numbers.first;
     final endSection = numbers.isEmpty ? startSection : numbers.last;
-    return (
-      _sectionStart(startSection),
-      _sectionEnd(endSection),
-    );
+    return (_sectionStart(startSection), _sectionEnd(endSection));
   }
 
   static int _sectionStart(int section) {
@@ -942,9 +966,16 @@ class _FeatureShortcut extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),

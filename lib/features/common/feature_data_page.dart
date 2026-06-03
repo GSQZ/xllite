@@ -6,10 +6,8 @@ import '../../api/xjit_features.dart';
 import '../../auth/auth_controller.dart';
 import 'async_content.dart';
 
-typedef FeatureDataBuilder = Widget Function(
-  BuildContext context,
-  Map<String, dynamic> data,
-);
+typedef FeatureDataBuilder =
+    Widget Function(BuildContext context, Map<String, dynamic> data);
 
 typedef FeatureDataValidator = bool Function(Map<String, dynamic> data);
 
@@ -45,7 +43,9 @@ class _FeatureDataPageState extends ConsumerState<FeatureDataPage> {
   }
 
   Future<Map<String, dynamic>> _load() async {
-    final session = ref.read(authControllerProvider).when(
+    final session = ref
+        .read(authControllerProvider)
+        .when(
           data: (value) => value,
           error: (error, stackTrace) => null,
           loading: () => null,
@@ -53,7 +53,9 @@ class _FeatureDataPageState extends ConsumerState<FeatureDataPage> {
     if (session == null) {
       throw const XjitApiException('请先登录');
     }
-    return ref.read(xjitApiClientProvider).run(
+    return ref
+        .read(xjitApiClientProvider)
+        .run(
           widget.feature,
           username: session.username,
           password: session.password,
@@ -62,9 +64,12 @@ class _FeatureDataPageState extends ConsumerState<FeatureDataPage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    final future = _load();
+    setState(() {
+      _future = future;
+    });
     try {
-      await _future;
+      await future;
     } catch (_) {
       // FutureBuilder owns the visible error state.
     }

@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../api/xjit_api_client.dart';
 import '../../api/xjit_features.dart';
 import '../../auth/auth_controller.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
+import '../common/payment_webview_page.dart';
 
 class CardPage extends ConsumerStatefulWidget {
   const CardPage({super.key});
@@ -56,9 +56,12 @@ class _CardPageState extends ConsumerState<CardPage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    final future = _load();
+    setState(() {
+      _future = future;
+    });
     try {
-      await _future;
+      await future;
     } catch (_) {
       // FutureBuilder owns the visible error state.
     }
@@ -164,11 +167,27 @@ class _CardPageState extends ConsumerState<CardPage> {
       return;
     }
 
-    await showModalBottomSheet<void>(
+    final order = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       builder: (context) => _RechargeSheet(session: session),
     );
+    if (order == null || !mounted) {
+      return;
+    }
+    final payResult = order['payResult'] is Map
+        ? Map<String, dynamic>.from(order['payResult'] as Map)
+        : const <String, dynamic>{};
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            PaymentWebViewPage(title: '一卡通充值', payResult: payResult),
+      ),
+    );
+    if (mounted) {
+      await _refresh();
+    }
   }
 
   Future<void> _openPaymentCode() async {
@@ -323,6 +342,13 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
         );
   }
 
+  void _reloadConfig() {
+    final future = _loadConfig();
+    setState(() {
+      _future = future;
+    });
+  }
+
   Future<void> _createOrder(Map<String, dynamic> config) async {
     final amount = _amountController.text.trim();
     final amountValue = double.tryParse(amount);
@@ -364,11 +390,7 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
         return;
       }
 
-      final navigator = Navigator.of(context);
-      navigator.pop();
-      await navigator.push(
-        MaterialPageRoute(builder: (_) => _RechargePaymentPage(order: order)),
-      );
+      Navigator.of(context).pop(order);
     } catch (error) {
       if (mounted) {
         _showError(error.toString());
@@ -416,8 +438,7 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
                       ),
                       const Spacer(),
                       IconButton(
-                        onPressed: () =>
-                            setState(() => _future = _loadConfig()),
+                        onPressed: _reloadConfig,
                         icon: const Icon(Icons.refresh),
                         tooltip: '刷新',
                       ),
@@ -430,10 +451,7 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else if (snapshot.hasError)
-                    ErrorPanel(
-                      error: snapshot.error!,
-                      onRetry: () => setState(() => _future = _loadConfig()),
-                    )
+                    ErrorPanel(error: snapshot.error!, onRetry: _reloadConfig)
                   else
                     _RechargeForm(
                       config: snapshot.data ?? const <String, dynamic>{},
@@ -612,96 +630,6 @@ class _RechargeForm extends StatelessWidget {
           label: Text(creating ? '正在下单' : '去支付'),
         ),
       ],
-    );
-  }
-}
-
-class _RechargePaymentPage extends StatefulWidget {
-  const _RechargePaymentPage({required this.order});
-
-  final Map<String, dynamic> order;
-
-  @override
-  State<_RechargePaymentPage> createState() => _RechargePaymentPageState();
-}
-
-class _RechargePaymentPageState extends State<_RechargePaymentPage> {
-  late final WebViewController _controller;
-  var _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    final payResult = widget.order['payResult'] is Map
-        ? Map<String, dynamic>.from(widget.order['payResult'] as Map)
-        : const <String, dynamic>{};
-    final h5Url = textValue(payResult['h5Url'], fallback: '');
-    final htmlPost = textValue(payResult['htmlPost'], fallback: '');
-
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) {
-            if (mounted) {
-              setState(() => _loading = false);
-            }
-          },
-        ),
-      );
-
-    if (h5Url.isNotEmpty) {
-      _controller.loadRequest(Uri.parse(h5Url));
-    } else {
-      _controller.loadHtmlString(_paymentHtml(htmlPost));
-    }
-  }
-
-  String _paymentHtml(String htmlPost) {
-    if (htmlPost.trim().isEmpty) {
-      return '<!doctype html><html><body><p>支付入口为空</p></body></html>';
-    }
-    if (htmlPost.toLowerCase().contains('<html')) {
-      return htmlPost;
-    }
-    return '''
-<!doctype html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-  $htmlPost
-  <script>
-    setTimeout(function() {
-      var form = document.forms[0];
-      if (form) { form.submit(); }
-    }, 80);
-  </script>
-</body>
-</html>
-''';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('一卡通充值'),
-        actions: [
-          IconButton(
-            onPressed: () => _controller.reload(),
-            icon: const Icon(Icons.refresh),
-            tooltip: '刷新',
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_loading) const Center(child: CircularProgressIndicator()),
-        ],
-      ),
     );
   }
 }
