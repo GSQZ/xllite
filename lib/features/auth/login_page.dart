@@ -56,22 +56,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 58,
-                        height: 58,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0F766E),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '新',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/branding/xinli_lite_app_icon_1024.png',
+                          width: 58,
+                          height: 58,
+                          fit: BoxFit.cover,
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -167,8 +158,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   Text(
                     '账号密码只保存在本机安全存储。新理Lite 为民间开发版本，不代表学校官方应用。',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -182,7 +173,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submit() async {
     setState(() => _error = null);
     try {
-      await ref.read(authControllerProvider.notifier).signIn(
+      await ref
+          .read(authControllerProvider.notifier)
+          .signIn(
             username: _usernameController.text,
             password: _passwordController.text,
           );
