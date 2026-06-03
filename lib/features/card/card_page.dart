@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../api/xjit_api_client.dart';
 import '../../api/xjit_features.dart';
@@ -70,6 +71,11 @@ class _CardPageState extends ConsumerState<CardPage> {
         title: const Text('校园卡'),
         actions: [
           IconButton(
+            onPressed: _openRecharge,
+            icon: const Icon(Icons.add_card_outlined),
+            tooltip: '充值',
+          ),
+          IconButton(
             onPressed: _openPaymentCode,
             icon: const Icon(Icons.qr_code_2_outlined),
             tooltip: '付款码',
@@ -107,6 +113,12 @@ class _CardPageState extends ConsumerState<CardPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: _openRecharge,
+                  icon: const Icon(Icons.add),
+                  label: const Text('一卡通充值'),
+                ),
+                const SizedBox(height: 10),
                 if (accounts.isEmpty)
                   const EmptyPanel(title: '没有校园卡余额数据')
                 else
@@ -137,6 +149,25 @@ class _CardPageState extends ConsumerState<CardPage> {
           );
         },
       ),
+    );
+  }
+
+  Future<void> _openRecharge() async {
+    final session = ref
+        .read(authControllerProvider)
+        .when(
+          data: (value) => value,
+          error: (error, stackTrace) => null,
+          loading: () => null,
+        );
+    if (session == null || !mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _RechargeSheet(session: session),
     );
   }
 
@@ -214,6 +245,426 @@ class _TransactionCard extends StatelessWidget {
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
+      ),
+    );
+  }
+}
+
+class _RechargeSheet extends ConsumerStatefulWidget {
+  const _RechargeSheet({required this.session});
+
+  final AuthSession session;
+
+  @override
+  ConsumerState<_RechargeSheet> createState() => _RechargeSheetState();
+}
+
+class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
+  late Future<Map<String, dynamic>> _future;
+  final TextEditingController _amountController = TextEditingController();
+  String? _selectedPayCode;
+  bool _creating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadConfig();
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  Future<Map<String, dynamic>> _loadConfig() {
+    return ref
+        .read(xjitApiClientProvider)
+        .run(
+          XjitFeature.rechargeConfig,
+          username: widget.session.username,
+          password: widget.session.password,
+        );
+  }
+
+  Future<void> _createOrder(Map<String, dynamic> config) async {
+    final amount = _amountController.text.trim();
+    final amountValue = double.tryParse(amount);
+    if (amountValue == null || amountValue <= 0) {
+      _showError('请输入有效充值金额');
+      return;
+    }
+
+    final payMethods = mapList(config['payMethods']);
+    if (payMethods.isEmpty) {
+      _showError('没有可用支付方式');
+      return;
+    }
+    final payMethod = payMethods.firstWhere(
+      (item) => textValue(item['code'], fallback: '') == _selectedPayCode,
+      orElse: () => payMethods.first,
+    );
+    final payCode = textValue(payMethod['code'], fallback: '');
+    if (payCode.isEmpty) {
+      _showError('支付方式缺少编码');
+      return;
+    }
+
+    setState(() => _creating = true);
+    try {
+      final order = await ref
+          .read(xjitApiClientProvider)
+          .run(
+            XjitFeature.rechargeCreateOrder,
+            username: widget.session.username,
+            password: widget.session.password,
+            params: {
+              'amount': amount,
+              'payCode': payCode,
+              'tradeType': textValue(payMethod['tradeType'], fallback: 'WAP'),
+            },
+          );
+      if (!mounted) {
+        return;
+      }
+
+      final navigator = Navigator.of(context);
+      navigator.pop();
+      await navigator.push(
+        MaterialPageRoute(builder: (_) => _RechargePaymentPage(order: order)),
+      );
+    } catch (error) {
+      if (mounted) {
+        _showError(error.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _creating = false);
+      }
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            18,
+            14,
+            18,
+            18 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: _future,
+            builder: (context, snapshot) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '一卡通充值',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () =>
+                            setState(() => _future = _loadConfig()),
+                        icon: const Icon(Icons.refresh),
+                        tooltip: '刷新',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 54),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (snapshot.hasError)
+                    ErrorPanel(
+                      error: snapshot.error!,
+                      onRetry: () => setState(() => _future = _loadConfig()),
+                    )
+                  else
+                    _RechargeForm(
+                      config: snapshot.data ?? const <String, dynamic>{},
+                      amountController: _amountController,
+                      selectedPayCode: _selectedPayCode,
+                      creating: _creating,
+                      onAmountChanged: (value) {
+                        setState(() => _amountController.text = value);
+                      },
+                      onPayCodeChanged: (value) {
+                        setState(() => _selectedPayCode = value);
+                      },
+                      onSubmit: () {
+                        _createOrder(
+                          snapshot.data ?? const <String, dynamic>{},
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '下单后会打开学校支付页面，支付完成后返回并刷新余额。',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RechargeForm extends StatelessWidget {
+  const _RechargeForm({
+    required this.config,
+    required this.amountController,
+    required this.selectedPayCode,
+    required this.creating,
+    required this.onAmountChanged,
+    required this.onPayCodeChanged,
+    required this.onSubmit,
+  });
+
+  final Map<String, dynamic> config;
+  final TextEditingController amountController;
+  final String? selectedPayCode;
+  final bool creating;
+  final ValueChanged<String> onAmountChanged;
+  final ValueChanged<String> onPayCodeChanged;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final amountOptions = mapList(config['amountOptions']);
+    final payMethods = mapList(config['payMethods']);
+    final balance = textValue(config['balance'], fallback: '');
+    final userName = textValue(config['username'], fallback: '');
+    final activePayCode =
+        selectedPayCode ??
+        (payMethods.isEmpty
+            ? ''
+            : textValue(payMethods.first['code'], fallback: ''));
+
+    if (amountController.text.trim().isEmpty && amountOptions.isNotEmpty) {
+      amountController.text = textValue(
+        amountOptions.first['amount'],
+        fallback: '',
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (balance.isNotEmpty || userName.isNotEmpty) ...[
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      userName.isEmpty ? '本人一卡通' : userName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  if (balance.isNotEmpty)
+                    Text(
+                      '余额 $balance',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+        Text(
+          '金额',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (amountOptions.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: amountOptions.map((option) {
+              final amount = textValue(option['amount'], fallback: '');
+              final label = textValue(option['name'], fallback: '$amount 元');
+              final selected = amount == amountController.text.trim();
+              return ChoiceChip(
+                label: Text(label),
+                selected: selected,
+                onSelected: (_) => onAmountChanged(amount),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 10),
+        ],
+        TextField(
+          controller: amountController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: '充值金额', suffixText: '元'),
+          onChanged: onAmountChanged,
+        ),
+        const SizedBox(height: 14),
+        Text(
+          '支付方式',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: colors.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (payMethods.isEmpty)
+          const EmptyPanel(title: '没有可用支付方式')
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: payMethods.map((method) {
+              final code = textValue(method['code'], fallback: '');
+              return ChoiceChip(
+                label: Text(textValue(method['name'], fallback: '支付方式')),
+                selected: code == activePayCode,
+                onSelected: (_) => onPayCodeChanged(code),
+              );
+            }).toList(),
+          ),
+        const SizedBox(height: 18),
+        FilledButton.icon(
+          onPressed: creating ? null : onSubmit,
+          icon: creating
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.payment_outlined),
+          label: Text(creating ? '正在下单' : '去支付'),
+        ),
+      ],
+    );
+  }
+}
+
+class _RechargePaymentPage extends StatefulWidget {
+  const _RechargePaymentPage({required this.order});
+
+  final Map<String, dynamic> order;
+
+  @override
+  State<_RechargePaymentPage> createState() => _RechargePaymentPageState();
+}
+
+class _RechargePaymentPageState extends State<_RechargePaymentPage> {
+  late final WebViewController _controller;
+  var _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final payResult = widget.order['payResult'] is Map
+        ? Map<String, dynamic>.from(widget.order['payResult'] as Map)
+        : const <String, dynamic>{};
+    final h5Url = textValue(payResult['h5Url'], fallback: '');
+    final htmlPost = textValue(payResult['htmlPost'], fallback: '');
+
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            if (mounted) {
+              setState(() => _loading = false);
+            }
+          },
+        ),
+      );
+
+    if (h5Url.isNotEmpty) {
+      _controller.loadRequest(Uri.parse(h5Url));
+    } else {
+      _controller.loadHtmlString(_paymentHtml(htmlPost));
+    }
+  }
+
+  String _paymentHtml(String htmlPost) {
+    if (htmlPost.trim().isEmpty) {
+      return '<!doctype html><html><body><p>支付入口为空</p></body></html>';
+    }
+    if (htmlPost.toLowerCase().contains('<html')) {
+      return htmlPost;
+    }
+    return '''
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  $htmlPost
+  <script>
+    setTimeout(function() {
+      var form = document.forms[0];
+      if (form) { form.submit(); }
+    }, 80);
+  </script>
+</body>
+</html>
+''';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('一卡通充值'),
+        actions: [
+          IconButton(
+            onPressed: () => _controller.reload(),
+            icon: const Icon(Icons.refresh),
+            tooltip: '刷新',
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          if (_loading) const Center(child: CircularProgressIndicator()),
+        ],
       ),
     );
   }
