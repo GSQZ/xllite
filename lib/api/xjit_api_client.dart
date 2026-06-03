@@ -12,6 +12,7 @@ final dioProvider = Provider<Dio>((ref) {
       receiveTimeout: const Duration(seconds: 45),
       sendTimeout: const Duration(seconds: 12),
       headers: const {'Content-Type': 'application/json'},
+      validateStatus: (status) => status != null && status < 500,
     ),
   );
 });
@@ -52,16 +53,22 @@ class XjitApiClient {
       payload['rememberMe'] = rememberMe;
     }
 
-    final response = await _dio.post<Map<String, dynamic>>(
-      '/api/v1/run',
-      data: payload,
-    );
-    final body = response.data;
+    final Response<Object?> response;
+    try {
+      response = await _dio.post<Object?>('/api/v1/run', data: payload);
+    } on DioException catch (error) {
+      throw XjitApiException(_dioErrorMessage(error));
+    }
+    final body = _asMap(response.data);
     if (body == null) {
+      final statusCode = response.statusCode;
+      if (statusCode != null && statusCode >= 400) {
+        throw XjitApiException('接口请求失败（HTTP $statusCode）');
+      }
       throw const XjitApiException('接口没有返回数据');
     }
     if (body['ok'] != true) {
-      throw XjitApiException(body['error']?.toString() ?? '请求失败');
+      throw XjitApiException(_errorMessage(body, response.statusCode));
     }
     final data = body['data'];
     if (data is Map<String, dynamic>) {
@@ -71,6 +78,44 @@ class XjitApiClient {
       return Map<String, dynamic>.from(data);
     }
     return <String, dynamic>{};
+  }
+
+  Map<String, dynamic>? _asMap(Object? value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    return null;
+  }
+
+  String _errorMessage(Map<String, dynamic> body, int? statusCode) {
+    final error = body['error'] ?? body['message'] ?? body['msg'];
+    final text = error?.toString().trim();
+    if (text != null && text.isNotEmpty) {
+      return text;
+    }
+    if (statusCode != null && statusCode >= 400) {
+      return '接口请求失败（HTTP $statusCode）';
+    }
+    return '请求失败';
+  }
+
+  String _dioErrorMessage(DioException error) {
+    final body = _asMap(error.response?.data);
+    if (body != null) {
+      return _errorMessage(body, error.response?.statusCode);
+    }
+    final statusCode = error.response?.statusCode;
+    if (statusCode != null) {
+      return '接口请求失败（HTTP $statusCode）';
+    }
+    final message = error.message?.trim();
+    if (message != null && message.isNotEmpty) {
+      return message;
+    }
+    return '接口请求失败';
   }
 }
 

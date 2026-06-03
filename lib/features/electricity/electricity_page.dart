@@ -106,6 +106,8 @@ class _ElectricityPageState extends ConsumerState<ElectricityPage> {
     final result = await showModalBottomSheet<_ElectricityRechargeResult>(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       builder: (context) {
         return _ElectricityRechargeSheet(session: session, roomQuery: room);
       },
@@ -280,6 +282,7 @@ class _ElectricityRechargeSheetState
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String? _selectedPayCode;
+  String? _errorText;
   bool _paying = false;
 
   @override
@@ -313,7 +316,21 @@ class _ElectricityRechargeSheetState
     });
   }
 
+  void _setAmount(String value) {
+    setState(() {
+      if (_amountController.text != value) {
+        _amountController.text = value;
+        _amountController.selection = TextSelection.collapsed(
+          offset: value.length,
+        );
+      }
+    });
+  }
+
   Future<void> _pay(Map<String, dynamic> config) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    _clearError();
+
     final amount = _amountController.text.trim();
     final amountValue = double.tryParse(amount);
     if (amountValue == null || amountValue <= 0) {
@@ -347,10 +364,15 @@ class _ElectricityRechargeSheetState
       'roomQuery': widget.roomQuery,
       'amount': amount,
       'payCode': payCode,
-      'customfield': config['customfield'] is Map
-          ? Map<String, dynamic>.from(config['customfield'] as Map)
-          : const <String, dynamic>{},
     };
+    if (config['customfield'] is Map) {
+      final customfield = Map<String, dynamic>.from(
+        config['customfield'] as Map,
+      );
+      if (customfield.isNotEmpty) {
+        params['customfield'] = customfield;
+      }
+    }
     final tradeType = textValue(payMethod['tradeType'], fallback: '');
     if (tradeType.isNotEmpty && tradeType != '-') {
       params['tradeType'] = tradeType;
@@ -359,7 +381,13 @@ class _ElectricityRechargeSheetState
       params['paymentPassword'] = password;
     }
 
+    final confirmed = await _confirmPayment(config, payMethod, amount);
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
     setState(() => _paying = true);
+    var resetPaying = true;
     try {
       final data = await ref
           .read(xjitApiClientProvider)
@@ -377,6 +405,7 @@ class _ElectricityRechargeSheetState
           ? Map<String, dynamic>.from(data['payResult'] as Map)
           : const <String, dynamic>{};
       final webPayment = _hasWebPayment(payResult);
+      resetPaying = false;
       Navigator.of(context).pop(
         _ElectricityRechargeResult(
           payResult: webPayment ? payResult : null,
@@ -388,10 +417,51 @@ class _ElectricityRechargeSheetState
         _showError(error.toString());
       }
     } finally {
-      if (mounted) {
+      if (mounted && resetPaying) {
         setState(() => _paying = false);
       }
     }
+  }
+
+  Future<bool?> _confirmPayment(
+    Map<String, dynamic> config,
+    Map<String, dynamic> payMethod,
+    String amount,
+  ) {
+    final room = config['room'] is Map
+        ? Map<String, dynamic>.from(config['room'] as Map)
+        : const <String, dynamic>{};
+    final roomName = [
+      textValue(room['buildingName'], fallback: ''),
+      textValue(room['roomName'], fallback: ''),
+    ].where((item) => item.isNotEmpty).join(' ');
+    final payName = textValue(payMethod['name'], fallback: '支付方式');
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('确认缴费'),
+          content: Text(
+            [
+              if (roomName.isNotEmpty) roomName,
+              '缴费金额：$amount 元',
+              '支付方式：$payName',
+            ].join('\n'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   bool _hasWebPayment(Map<String, dynamic> payResult) {
@@ -404,9 +474,16 @@ class _ElectricityRechargeSheetState
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) {
+      return;
+    }
+    setState(() => _errorText = message);
+  }
+
+  void _clearError() {
+    if (_errorText != null) {
+      setState(() => _errorText = null);
+    }
   }
 
   @override
@@ -441,6 +518,13 @@ class _ElectricityRechargeSheetState
                         icon: const Icon(Icons.refresh),
                         tooltip: '刷新',
                       ),
+                      IconButton(
+                        onPressed: _paying
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                        tooltip: '取消',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -457,10 +541,9 @@ class _ElectricityRechargeSheetState
                       amountController: _amountController,
                       passwordController: _passwordController,
                       selectedPayCode: _selectedPayCode,
+                      errorText: _errorText,
                       paying: _paying,
-                      onAmountChanged: (value) {
-                        setState(() => _amountController.text = value);
-                      },
+                      onAmountChanged: _setAmount,
                       onPayCodeChanged: (value) {
                         setState(() => _selectedPayCode = value);
                       },
@@ -484,6 +567,7 @@ class _ElectricityRechargeForm extends StatelessWidget {
     required this.amountController,
     required this.passwordController,
     required this.selectedPayCode,
+    required this.errorText,
     required this.paying,
     required this.onAmountChanged,
     required this.onPayCodeChanged,
@@ -494,6 +578,7 @@ class _ElectricityRechargeForm extends StatelessWidget {
   final TextEditingController amountController;
   final TextEditingController passwordController;
   final String? selectedPayCode;
+  final String? errorText;
   final bool paying;
   final ValueChanged<String> onAmountChanged;
   final ValueChanged<String> onPayCodeChanged;
@@ -657,20 +742,83 @@ class _ElectricityRechargeForm extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 18),
-        SizedBox(
-          height: 48,
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: paying ? null : onSubmit,
-            icon: paying
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.payments_outlined),
-            label: Text(paying ? '正在缴费' : '确认缴费'),
+        if (errorText != null && errorText!.isNotEmpty) ...[
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.errorContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 18,
+                    color: colors.onErrorContainer,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      errorText!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onErrorContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
+          const SizedBox(height: 12),
+        ],
+        if (paying) ...[
+          LinearProgressIndicator(
+            borderRadius: BorderRadius.circular(999),
+            minHeight: 3,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '正在提交给学校支付系统',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: paying ? null : () => Navigator.of(context).pop(),
+                  child: const Text('取消'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: paying ? null : onSubmit,
+                  icon: paying
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.payments_outlined),
+                  label: Text(paying ? '正在缴费' : '确认缴费'),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
