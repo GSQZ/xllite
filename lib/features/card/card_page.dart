@@ -71,16 +71,6 @@ class _CardPageState extends ConsumerState<CardPage> {
         title: const Text('校园卡'),
         actions: [
           IconButton(
-            onPressed: _openRecharge,
-            icon: const Icon(Icons.add_card_outlined),
-            tooltip: '充值',
-          ),
-          IconButton(
-            onPressed: _openPaymentCode,
-            icon: const Icon(Icons.qr_code_2_outlined),
-            tooltip: '付款码',
-          ),
-          IconButton(
             onPressed: _refresh,
             icon: const Icon(Icons.refresh),
             tooltip: '刷新',
@@ -106,17 +96,27 @@ class _CardPageState extends ConsumerState<CardPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  '账户余额',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                FilledButton.icon(
-                  onPressed: _openRecharge,
-                  icon: const Icon(Icons.add),
-                  label: const Text('一卡通充值'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '账户余额',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    _CardHeaderAction(
+                      icon: Icons.qr_code_2_outlined,
+                      tooltip: '付款码',
+                      onTap: _openPaymentCode,
+                    ),
+                    const SizedBox(width: 8),
+                    _CardHeaderAction(
+                      icon: Icons.add_card_outlined,
+                      tooltip: '充值',
+                      onTap: _openRecharge,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 if (accounts.isEmpty)
@@ -196,6 +196,42 @@ class CardSnapshot {
 
   final Map<String, dynamic> balance;
   final Map<String, dynamic> transactions;
+}
+
+class _CardHeaderAction extends StatelessWidget {
+  const _CardHeaderAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(icon, size: 19, color: colors.onSurfaceVariant),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _BalanceCard extends StatelessWidget {
