@@ -13,7 +13,19 @@
 - Routing: go_router
 - Network: dio
 - Local secure storage: flutter_secure_storage
-- Data models: freezed + json_serializable
+
+## 版本
+
+当前版本：`0.1.0+1`
+
+## 构建产物
+
+推送 `v*` tag 后，GitHub Actions 会自动构建：
+
+- Android release APK
+- iOS unsigned IPA，用于爱思助手、AltStore、SideStore 等自签工具重新签名安装
+
+手动构建也可以在 GitHub Actions 里运行 `Build Release Artifacts`。
 
 ## 文档
 
@@ -31,4 +43,8 @@ Flutter 3.41.7
 Dart 3.11.5
 ```
 
-后续 Flutter 工程名建议使用 `xinli_lite`，应用展示名使用「新理Lite」。
+Flutter 工程名为 `xinli_lite`，应用展示名为「新理Lite」。
+
+## License
+
+本项目使用 [GNU Affero General Public License v3.0](./LICENSE) 授权。

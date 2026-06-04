@@ -46,8 +46,8 @@ class _AppShellState extends State<AppShell> {
             label: '校园卡',
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
             label: '我的',
           ),
         ],

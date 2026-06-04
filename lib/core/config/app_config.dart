@@ -1,4 +1,5 @@
 class AppConfig {
   static const appName = '新理Lite';
-  static const apiBaseUrl = 'http://103.236.73.149:8765';
+  static const appVersion = '0.1.0';
+  static const apiBaseUrl = 'https://xllite.sayqz.com';
 }

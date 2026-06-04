@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'auth/auth_controller.dart';
 import 'features/auth/login_page.dart';
 import 'features/home/app_shell.dart';
-import 'theme/app_theme_controller.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -19,19 +18,14 @@ class XinliLiteApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final themeSettings = ref
-        .watch(appThemeControllerProvider)
-        .maybeWhen(
-          data: (value) => value,
-          orElse: () => AppThemeSettings.defaults,
-        );
 
     return MaterialApp.router(
       title: '新理Lite',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(themeSettings.seedColor),
-      darkTheme: AppTheme.dark(themeSettings.seedColor),
-      themeMode: themeSettings.themeMode,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
+        useMaterial3: true,
+      ),
       routerConfig: router,
     );
   }
@@ -85,102 +79,6 @@ class SplashScreen extends StatelessWidget {
             const SizedBox(height: 18),
             const Text('新理Lite', style: TextStyle(fontSize: 18)),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class AppTheme {
-  static ThemeData light(Color seed) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: seed,
-      primary: seed,
-      secondary: const Color(0xFF2563EB),
-      tertiary: const Color(0xFFF59E0B),
-      surface: const Color(0xFFFBFCFD),
-    );
-
-    return ThemeData(
-      colorScheme: scheme,
-      useMaterial3: true,
-      scaffoldBackgroundColor: const Color(0xFFF6F8FA),
-      appBarTheme: const AppBarTheme(
-        centerTitle: false,
-        elevation: 0,
-        backgroundColor: Color(0xFFF6F8FA),
-        foregroundColor: Color(0xFF111827),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: Color(0xFFE5E7EB)),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: seed, width: 1.4),
-        ),
-      ),
-    );
-  }
-
-  static ThemeData dark(Color seed) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: seed,
-      primary: seed,
-      secondary: const Color(0xFF60A5FA),
-      tertiary: const Color(0xFFFBBF24),
-      brightness: Brightness.dark,
-    );
-
-    return ThemeData(
-      colorScheme: scheme,
-      useMaterial3: true,
-      scaffoldBackgroundColor: const Color(0xFF0F172A),
-      appBarTheme: const AppBarTheme(
-        centerTitle: false,
-        elevation: 0,
-        backgroundColor: Color(0xFF0F172A),
-        foregroundColor: Color(0xFFF8FAFC),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        color: const Color(0xFF111827),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: Color(0xFF253142)),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFF111827),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF334155)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF334155)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: seed, width: 1.4),
         ),
       ),
     );
