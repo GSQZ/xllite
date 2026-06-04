@@ -4,6 +4,16 @@
 
 > 新理Lite 是民间开发版本，不代表新疆理工学院官方应用。
 
+## 截图
+
+| 首页 | 课表 | 校园卡 |
+| --- | --- | --- |
+| <img src="./docs/assets/screenshots/home.png" width="220" alt="首页"> | <img src="./docs/assets/screenshots/schedule.png" width="220" alt="课表"> | <img src="./docs/assets/screenshots/card.png" width="220" alt="校园卡"> |
+
+| 宿舍电费 | 成绩 | 考试安排 |
+| --- | --- | --- |
+| <img src="./docs/assets/screenshots/electricity.png" width="220" alt="宿舍电费"> | <img src="./docs/assets/screenshots/grades.png" width="220" alt="成绩"> | <img src="./docs/assets/screenshots/exams.png" width="220" alt="考试安排"> |
+
 ## 技术方向
 
 - Framework: Flutter
