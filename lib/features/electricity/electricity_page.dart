@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../api/xjit_api_client.dart';
 import '../../api/xjit_features.dart';
 import '../../auth/auth_controller.dart';
+import '../../ui/xl_theme.dart';
+import '../../ui/xl_widgets.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
 import '../common/payment_webview_page.dart';
@@ -152,33 +155,69 @@ class _ElectricityPageState extends ConsumerState<ElectricityPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('宿舍电费')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
         children: [
-          TextField(
-            controller: _roomController,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _query(),
-            decoration: const InputDecoration(
-              labelText: '宿舍号',
-              hintText: '例如 9#312',
-              prefixIcon: Icon(Icons.meeting_room_outlined),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: _query,
-              icon: const Icon(Icons.bolt),
-              label: const Text('查询剩余电量'),
+          XLCard(
+            radius: 20,
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '宿舍号',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: XLColors.inkSecondary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _roomController,
+                        textInputAction: TextInputAction.search,
+                        onSubmitted: (_) => _query(),
+                        decoration: const InputDecoration(
+                          hintText: '例如 5#524',
+                          prefixIcon: Icon(LucideIcons.building2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: FilledButton(
+                        onPressed: _query,
+                        style: FilledButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(17),
+                          ),
+                        ),
+                        child: const Icon(LucideIcons.search, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '输入楼号和宿舍号，查询后可直接缴电费。',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: XLColors.inkTertiary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 18),
           if (_future == null)
             const EmptyPanel(
               title: '输入宿舍号后查询',
-              subtitle: '支持 9#312、5号楼524 这类写法。',
-              icon: Icons.bolt_outlined,
+              subtitle: '查询后会显示剩余电量和宿舍信息。',
+              icon: LucideIcons.zap,
             )
           else
             FutureBuilder<Map<String, dynamic>>(
@@ -212,40 +251,13 @@ class _ElectricityPageState extends ConsumerState<ElectricityPage> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('剩余电量'),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '$value ${textValue(remaining['unit'], fallback: '度')}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .displaySmall
-                                        ?.copyWith(fontWeight: FontWeight.w800),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            FilledButton.tonalIcon(
-                              onPressed: _openRecharge,
-                              icon: const Icon(Icons.payments_outlined),
-                              label: const Text('缴电费'),
-                            ),
-                          ],
-                        ),
-                      ),
+                    _ElectricityBalanceCard(
+                      remaining: remaining,
+                      onRecharge: _openRecharge,
                     ),
                     const SizedBox(height: 10),
                     InfoCard(
-                      icon: Icons.apartment_outlined,
+                      icon: LucideIcons.building2,
                       title: textValue(room['buildingName'], fallback: '宿舍'),
                       subtitle:
                           '${textValue(room['levelName'])} · ${textValue(room['roomName'])}',
@@ -266,6 +278,124 @@ class _ElectricityRechargeResult {
 
   final Map<String, dynamic>? payResult;
   final String message;
+}
+
+class _ElectricityBalanceCard extends StatelessWidget {
+  const _ElectricityBalanceCard({
+    required this.remaining,
+    required this.onRecharge,
+  });
+
+  final Map<String, dynamic> remaining;
+  final VoidCallback onRecharge;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = textValue(remaining['value']);
+    final unit = textValue(remaining['unit'], fallback: '度');
+    final number = double.tryParse(value);
+    final lowPower = number != null && number < 10;
+    final statusText = lowPower ? '电量偏低' : '状态正常';
+    final statusColor = lowPower ? XLColors.warning : XLColors.success;
+
+    return XLCard(
+      radius: 22,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const XLIconBox(
+                icon: LucideIcons.zap,
+                color: XLColors.brandSoft,
+                iconColor: XLColors.brand,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '剩余电量',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: XLColors.ink,
+                  ),
+                ),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: FittedBox(
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.scaleDown,
+                  child: Text.rich(
+                    TextSpan(
+                      text: value,
+                      children: [
+                        TextSpan(
+                          text: unit,
+                          style: const TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: XLColors.ink,
+                      fontSize: 58,
+                      fontWeight: FontWeight.w900,
+                      height: 0.95,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              FilledButton.icon(
+                onPressed: onRecharge,
+                icon: const Icon(LucideIcons.walletCards, size: 18),
+                label: const Text('去缴费'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '数据来自学校一卡通系统，下拉或点击查询可刷新。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: XLColors.inkSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ElectricityRechargeSheet extends ConsumerStatefulWidget {
@@ -498,7 +628,7 @@ class _ElectricityRechargeSheetState
         child: Padding(
           padding: EdgeInsets.fromLTRB(
             18,
-            14,
+            10,
             18,
             18 + MediaQuery.viewInsetsOf(context).bottom,
           ),
@@ -509,6 +639,17 @@ class _ElectricityRechargeSheetState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: XLColors.line,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Text(
@@ -518,17 +659,20 @@ class _ElectricityRechargeSheetState
                         ),
                       ),
                       const Spacer(),
-                      IconButton(
-                        onPressed: _reloadConfig,
-                        icon: const Icon(Icons.refresh),
+                      XLIconButton(
+                        onTap: _reloadConfig,
+                        icon: LucideIcons.refreshCw,
                         tooltip: '刷新',
+                        size: 38,
                       ),
-                      IconButton(
-                        onPressed: _paying
+                      const SizedBox(width: 8),
+                      XLIconButton(
+                        onTap: _paying
                             ? null
                             : () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close),
+                        icon: LucideIcons.x,
                         tooltip: '取消',
+                        size: 38,
                       ),
                     ],
                   ),
@@ -591,7 +735,6 @@ class _ElectricityRechargeForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final room = config['room'] is Map
         ? Map<String, dynamic>.from(config['room'] as Map)
         : const <String, dynamic>{};
@@ -624,66 +767,82 @@ class _ElectricityRechargeForm extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  textValue(room['buildingName'], fallback: '宿舍'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  [
-                    textValue(room['levelName'], fallback: ''),
-                    textValue(room['roomName'], fallback: ''),
-                    textValue(room['query'], fallback: ''),
-                  ].where((item) => item.isNotEmpty).join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
+        XLCard(
+          radius: 18,
+          color: XLColors.surfaceMuted,
+          borderColor: Colors.transparent,
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const XLIconBox(
+                    icon: LucideIcons.building2,
+                    size: 38,
+                    iconSize: 20,
+                    color: XLColors.surface,
+                    iconColor: XLColors.brand,
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      textValue(room['buildingName'], fallback: '宿舍'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: XLColors.ink,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                [
+                  textValue(room['levelName'], fallback: ''),
+                  textValue(room['roomName'], fallback: ''),
+                  textValue(room['query'], fallback: ''),
+                ].where((item) => item.isNotEmpty).join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: XLColors.inkSecondary,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    _MiniMetric(
-                      label: '剩余',
-                      value:
-                          '${textValue(remaining['value'])}${textValue(remaining['unit'], fallback: '度')}',
-                    ),
-                    const SizedBox(width: 12),
-                    _MiniMetric(
-                      label: '卡余额',
-                      value:
-                          '${textValue(cardBalance['value'])}${textValue(cardBalance['unit'], fallback: '元')}',
-                    ),
-                    const SizedBox(width: 12),
-                    _MiniMetric(
-                      label: '单价',
-                      value:
-                          '${textValue(price['value'])}${textValue(price['unit'], fallback: '元/度')}',
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _MiniMetric(
+                    label: '剩余',
+                    value:
+                        '${textValue(remaining['value'])}${textValue(remaining['unit'], fallback: '度')}',
+                  ),
+                  const SizedBox(width: 12),
+                  _MiniMetric(
+                    label: '卡余额',
+                    value:
+                        '${textValue(cardBalance['value'])}${textValue(cardBalance['unit'], fallback: '元')}',
+                  ),
+                  const SizedBox(width: 12),
+                  _MiniMetric(
+                    label: '单价',
+                    value:
+                        '${textValue(price['value'])}${textValue(price['unit'], fallback: '元/度')}',
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 14),
         Text(
           '金额',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colors.onSurfaceVariant,
+            color: XLColors.inkSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -695,10 +854,10 @@ class _ElectricityRechargeForm extends StatelessWidget {
             children: amountOptions.map((option) {
               final amount = textValue(option['amount'], fallback: '');
               final label = textValue(option['name'], fallback: '$amount 元');
-              return ChoiceChip(
+              return _ChoicePill(
                 label: Text(label),
                 selected: amount == amountController.text.trim(),
-                onSelected: (_) => onAmountChanged(amount),
+                onTap: () => onAmountChanged(amount),
               );
             }).toList(),
           ),
@@ -714,7 +873,7 @@ class _ElectricityRechargeForm extends StatelessWidget {
         Text(
           '支付方式',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colors.onSurfaceVariant,
+            color: XLColors.inkSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -727,10 +886,10 @@ class _ElectricityRechargeForm extends StatelessWidget {
             runSpacing: 8,
             children: payMethods.map((method) {
               final code = textValue(method['code'], fallback: '');
-              return ChoiceChip(
+              return _ChoicePill(
                 label: Text(textValue(method['name'], fallback: '支付方式')),
                 selected: code == activePayCode,
-                onSelected: (_) => onPayCodeChanged(code),
+                onTap: () => onPayCodeChanged(code),
               );
             }).toList(),
           ),
@@ -742,41 +901,13 @@ class _ElectricityRechargeForm extends StatelessWidget {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: '一卡通支付密码',
-              prefixIcon: Icon(Icons.lock_outline),
+              prefixIcon: Icon(LucideIcons.lockKeyhole),
             ),
           ),
         ],
         const SizedBox(height: 18),
         if (errorText != null && errorText!.isNotEmpty) ...[
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.errorContainer.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 18,
-                    color: colors.onErrorContainer,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      errorText!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colors.onErrorContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _SheetErrorBanner(message: errorText!),
           const SizedBox(height: 12),
         ],
         if (paying) ...[
@@ -788,7 +919,7 @@ class _ElectricityRechargeForm extends StatelessWidget {
           Text(
             '正在提交给学校支付系统',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
+              color: XLColors.inkSecondary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -818,7 +949,7 @@ class _ElectricityRechargeForm extends StatelessWidget {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.payments_outlined),
+                      : const Icon(LucideIcons.walletCards, size: 18),
                   label: Text(paying ? '正在缴费' : '确认缴费'),
                 ),
               ),
@@ -838,8 +969,6 @@ class _MiniMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -847,8 +976,8 @@ class _MiniMetric extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+              color: XLColors.inkSecondary,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 3),
@@ -856,11 +985,109 @@ class _MiniMetric extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: XLColors.ink,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ChoicePill extends StatelessWidget {
+  const _ChoicePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Widget label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? XLColors.brandSoft : XLColors.surface,
+      borderRadius: BorderRadius.circular(15),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: selected
+                  ? XLColors.brand.withValues(alpha: 0.18)
+                  : XLColors.line,
+              width: 1.1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                const Icon(LucideIcons.check, size: 16, color: XLColors.brand),
+                const SizedBox(width: 7),
+              ],
+              DefaultTextStyle.merge(
+                style: TextStyle(
+                  color: selected ? XLColors.ink : XLColors.inkSecondary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+                child: label,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetErrorBanner extends StatelessWidget {
+  const _SheetErrorBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: XLColors.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: XLColors.danger.withValues(alpha: 0.16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              LucideIcons.circleAlert,
+              size: 18,
+              color: XLColors.danger,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: XLColors.danger,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
