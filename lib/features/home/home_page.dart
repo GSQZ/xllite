@@ -47,20 +47,20 @@ class _HomePageState extends ConsumerState<HomePage> {
       api.run(
         XjitFeature.profile,
         username: session.username,
-        password: session.password,
+        accessToken: session.accessToken,
         forceRefresh: forceRefresh,
       ),
       api.run(
         XjitFeature.schedule,
         username: session.username,
-        password: session.password,
+        accessToken: session.accessToken,
         forceRefresh: forceRefresh,
       ),
       _safeRun(
         api,
         XjitFeature.cardBalance,
         username: session.username,
-        password: session.password,
+        accessToken: session.accessToken,
         forceRefresh: forceRefresh,
       ),
       cleanRoomQuery == null || cleanRoomQuery.isEmpty
@@ -69,7 +69,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               api,
               XjitFeature.electricityAccount,
               username: session.username,
-              password: session.password,
+              accessToken: session.accessToken,
               params: {'roomQuery': cleanRoomQuery},
               forceRefresh: forceRefresh,
             ),
@@ -87,7 +87,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     XjitApiCache api,
     XjitFeature feature, {
     required String username,
-    required String password,
+    required String accessToken,
     Map<String, dynamic> params = const {},
     bool forceRefresh = false,
   }) async {
@@ -95,7 +95,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       return await api.run(
         feature,
         username: username,
-        password: password,
+        accessToken: accessToken,
         params: params,
         forceRefresh: forceRefresh,
       );

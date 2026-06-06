@@ -56,7 +56,7 @@ class XjitApiCache {
   Future<Map<String, dynamic>> run(
     XjitFeature feature, {
     required String username,
-    required String password,
+    required String accessToken,
     Map<String, dynamic> params = const {},
     bool forceRefresh = false,
   }) {
@@ -71,8 +71,7 @@ class XjitApiCache {
         _runCached(
           key: key,
           feature: feature,
-          username: username,
-          password: password,
+          accessToken: accessToken,
           params: params,
           forceRefresh: forceRefresh,
         ).catchError((Object error, StackTrace stackTrace) {
@@ -102,8 +101,7 @@ class XjitApiCache {
   Future<Map<String, dynamic>> _runCached({
     required String key,
     required XjitFeature feature,
-    required String username,
-    required String password,
+    required String accessToken,
     required Map<String, dynamic> params,
     required bool forceRefresh,
   }) async {
@@ -116,8 +114,7 @@ class XjitApiCache {
 
     final data = await _client.run(
       feature,
-      username: username,
-      password: password,
+      accessToken: accessToken,
       params: params,
     );
     await _writeRunCache(key, data);
@@ -233,17 +230,26 @@ class XjitApiClient {
 
   Future<Map<String, dynamic>> run(
     XjitFeature feature, {
+    required String accessToken,
+    Map<String, dynamic> params = const {},
+  }) async {
+    final payload = <String, dynamic>{
+      'feature': feature.value,
+      'params': params,
+    };
+    final body = await _post('/api/v1/run', payload, token: accessToken);
+    return _dataMap(body);
+  }
+
+  Future<Map<String, dynamic>> login({
     required String username,
     required String password,
-    Map<String, dynamic> params = const {},
     String? captcha,
     bool? rememberMe,
   }) async {
     final payload = <String, dynamic>{
       'username': username,
       'password': password,
-      'feature': feature.value,
-      'params': params,
     };
     if (captcha != null && captcha.isNotEmpty) {
       payload['captcha'] = captcha;
@@ -251,13 +257,109 @@ class XjitApiClient {
     if (rememberMe != null) {
       payload['rememberMe'] = rememberMe;
     }
+    final body = await _post('/api/v1/auth/login', payload);
+    return _dataMap(body);
+  }
 
+  Future<Map<String, dynamic>> session(String accessToken) async {
+    final body = await _get('/api/v1/auth/session', token: accessToken);
+    return _dataMap(body);
+  }
+
+  Future<Map<String, dynamic>> refresh(String accessToken) async {
+    final body = await _post('/api/v1/auth/refresh', {
+      'accessToken': accessToken,
+    }, token: accessToken);
+    return _dataMap(body);
+  }
+
+  Future<void> logout(String accessToken) async {
+    await _post('/api/v1/auth/logout', const {}, token: accessToken);
+  }
+
+  Future<Map<String, dynamic>> wechatStart({
+    String? apiBaseUrl,
+    String? serviceUrl,
+  }) async {
+    final payload = <String, dynamic>{};
+    if (apiBaseUrl != null && apiBaseUrl.isNotEmpty) {
+      payload['apiBaseUrl'] = apiBaseUrl;
+    }
+    if (serviceUrl != null && serviceUrl.isNotEmpty) {
+      payload['serviceUrl'] = serviceUrl;
+    }
+    final body = await _post('/api/v1/auth/wechat/start', payload);
+    return _dataMap(body);
+  }
+
+  Future<Map<String, dynamic>> wechatStatus(String state) async {
+    final body = await _get(
+      '/api/v1/auth/wechat/status',
+      queryParameters: {'state': state},
+    );
+    return _dataMap(body);
+  }
+
+  Future<Map<String, dynamic>> wechatComplete({
+    required String state,
+    String? redirectUrl,
+    String? ticket,
+  }) async {
+    final payload = <String, dynamic>{'state': state};
+    if (ticket != null && ticket.isNotEmpty) {
+      payload['ticket'] = ticket;
+    } else if (redirectUrl != null && redirectUrl.isNotEmpty) {
+      payload['redirectUrl'] = redirectUrl;
+    }
+    final body = await _post('/api/v1/auth/wechat/complete', payload);
+    return _dataMap(body);
+  }
+
+  Future<Map<String, dynamic>> _get(
+    String path, {
+    String? token,
+    Map<String, dynamic>? queryParameters,
+  }) async {
     final Response<Object?> response;
     try {
-      response = await _dio.post<Object?>('/api/v1/run', data: payload);
+      response = await _dio.get<Object?>(
+        path,
+        queryParameters: queryParameters,
+        options: _options(token),
+      );
     } on DioException catch (error) {
       throw XjitApiException(_dioErrorMessage(error));
     }
+    return _bodyMap(response);
+  }
+
+  Future<Map<String, dynamic>> _post(
+    String path,
+    Map<String, dynamic> payload, {
+    String? token,
+  }) async {
+    final Response<Object?> response;
+    try {
+      response = await _dio.post<Object?>(
+        path,
+        data: payload,
+        options: _options(token),
+      );
+    } on DioException catch (error) {
+      throw XjitApiException(_dioErrorMessage(error));
+    }
+    return _bodyMap(response);
+  }
+
+  Options? _options(String? token) {
+    final cleanToken = token?.trim();
+    if (cleanToken == null || cleanToken.isEmpty) {
+      return null;
+    }
+    return Options(headers: {'Authorization': 'Bearer $cleanToken'});
+  }
+
+  Map<String, dynamic> _bodyMap(Response<Object?> response) {
     final body = _asMap(response.data);
     if (body == null) {
       final statusCode = response.statusCode;
@@ -269,6 +371,10 @@ class XjitApiClient {
     if (body['ok'] != true) {
       throw XjitApiException(_errorMessage(body, response.statusCode));
     }
+    return body;
+  }
+
+  Map<String, dynamic> _dataMap(Map<String, dynamic> body) {
     final data = body['data'];
     if (data is Map<String, dynamic>) {
       return data;

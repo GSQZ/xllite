@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/auth_controller.dart';
+import 'wechat_login_page.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key, this.initialError});
@@ -154,9 +155,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       label: Text(isLoading ? '正在验证' : '登录'),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: isLoading ? null : _openWechatLogin,
+                      icon: const Icon(Icons.qr_code_scanner_outlined),
+                      label: const Text('微信扫码登录'),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Text(
-                    '账号密码只保存在本机安全存储。新理Lite 为民间开发版本，不代表学校官方应用。',
+                    '登录成功后仅保存接口访问令牌。新理Lite 为民间开发版本，不代表学校官方应用。',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -184,6 +195,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         return;
       }
       setState(() => _error = error.toString());
+    }
+  }
+
+  Future<void> _openWechatLogin() async {
+    setState(() => _error = null);
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const WechatLoginPage()));
+    if (!mounted) {
+      return;
+    }
+    if (result == true) {
+      setState(() => _error = null);
     }
   }
 }

@@ -43,13 +43,13 @@ class _CardPageState extends ConsumerState<CardPage> {
       api.run(
         XjitFeature.cardBalance,
         username: session.username,
-        password: session.password,
+        accessToken: session.accessToken,
         forceRefresh: forceRefresh,
       ),
       api.run(
         XjitFeature.cardTransactions,
         username: session.username,
-        password: session.password,
+        accessToken: session.accessToken,
         params: const {'pageSize': 20},
         forceRefresh: forceRefresh,
       ),
@@ -339,8 +339,7 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
         .read(xjitApiClientProvider)
         .run(
           XjitFeature.rechargeConfig,
-          username: widget.session.username,
-          password: widget.session.password,
+          accessToken: widget.session.accessToken,
         );
   }
 
@@ -380,8 +379,7 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
           .read(xjitApiClientProvider)
           .run(
             XjitFeature.rechargeCreateOrder,
-            username: widget.session.username,
-            password: widget.session.password,
+            accessToken: widget.session.accessToken,
             params: {
               'amount': amount,
               'payCode': payCode,
@@ -675,8 +673,7 @@ class _PaymentCodeSheetState extends ConsumerState<_PaymentCodeSheet> {
         .read(xjitApiClientProvider)
         .run(
           XjitFeature.campusPaymentCode,
-          username: widget.session.username,
-          password: widget.session.password,
+          accessToken: widget.session.accessToken,
         );
     if (mounted) {
       _startCountdown(data);

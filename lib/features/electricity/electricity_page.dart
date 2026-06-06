@@ -76,7 +76,7 @@ class _ElectricityPageState extends ConsumerState<ElectricityPage> {
         .run(
           XjitFeature.electricityAccount,
           username: session.username,
-          password: session.password,
+          accessToken: session.accessToken,
           params: {'roomQuery': cleanRoom},
           forceRefresh: forceRefresh,
         );
@@ -310,8 +310,7 @@ class _ElectricityRechargeSheetState
         .read(xjitApiClientProvider)
         .run(
           XjitFeature.electricityRechargeConfig,
-          username: widget.session.username,
-          password: widget.session.password,
+          accessToken: widget.session.accessToken,
           params: {'roomQuery': widget.roomQuery},
         );
   }
@@ -400,8 +399,7 @@ class _ElectricityRechargeSheetState
           .read(xjitApiClientProvider)
           .run(
             XjitFeature.electricityRechargePay,
-            username: widget.session.username,
-            password: widget.session.password,
+            accessToken: widget.session.accessToken,
             params: params,
           );
       if (!mounted) {

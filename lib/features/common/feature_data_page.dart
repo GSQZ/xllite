@@ -58,7 +58,7 @@ class _FeatureDataPageState extends ConsumerState<FeatureDataPage> {
         .run(
           widget.feature,
           username: session.username,
-          password: session.password,
+          accessToken: session.accessToken,
           params: widget.params,
           forceRefresh: forceRefresh,
         );
