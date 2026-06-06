@@ -293,10 +293,6 @@ class _ElectricityBalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final value = textValue(remaining['value']);
     final unit = textValue(remaining['unit'], fallback: '度');
-    final number = double.tryParse(value);
-    final lowPower = number != null && number < 10;
-    final statusText = lowPower ? '电量偏低' : '状态正常';
-    final statusColor = lowPower ? XLColors.warning : XLColors.success;
 
     return XLCard(
       radius: 22,
@@ -321,68 +317,35 @@ class _ElectricityBalanceCard extends StatelessWidget {
                   ),
                 ),
               ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ),
-              ),
+              _RechargeMiniButton(onTap: onRecharge),
             ],
           ),
           const SizedBox(height: 18),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: FittedBox(
-                  alignment: Alignment.centerLeft,
-                  fit: BoxFit.scaleDown,
-                  child: Text.rich(
-                    TextSpan(
-                      text: value,
-                      children: [
-                        TextSpan(
-                          text: unit,
-                          style: const TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-                    maxLines: 1,
+          FittedBox(
+            alignment: Alignment.centerLeft,
+            fit: BoxFit.scaleDown,
+            child: Text.rich(
+              TextSpan(
+                text: value,
+                children: [
+                  TextSpan(
+                    text: unit,
                     style: const TextStyle(
-                      color: XLColors.ink,
-                      fontSize: 58,
+                      fontSize: 30,
                       fontWeight: FontWeight.w900,
-                      height: 0.95,
-                      letterSpacing: 0,
                     ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 16),
-              FilledButton.icon(
-                onPressed: onRecharge,
-                icon: const Icon(LucideIcons.walletCards, size: 18),
-                label: const Text('去缴费'),
+              maxLines: 1,
+              style: const TextStyle(
+                color: XLColors.ink,
+                fontSize: 58,
+                fontWeight: FontWeight.w900,
+                height: 0.95,
+                letterSpacing: 0,
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 10),
           Text(
@@ -393,6 +356,44 @@ class _ElectricityBalanceCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RechargeMiniButton extends StatelessWidget {
+  const _RechargeMiniButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: XLColors.brandSoft,
+      borderRadius: BorderRadius.circular(13),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LucideIcons.walletCards, size: 15, color: XLColors.brand),
+              SizedBox(width: 5),
+              Text(
+                '充值',
+                style: TextStyle(
+                  color: XLColors.brand,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
