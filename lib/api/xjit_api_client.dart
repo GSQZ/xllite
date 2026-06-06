@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,6 +22,92 @@ final dioProvider = Provider<Dio>((ref) {
 final xjitApiClientProvider = Provider<XjitApiClient>((ref) {
   return XjitApiClient(ref.watch(dioProvider));
 });
+
+final xjitApiCacheProvider = Provider<XjitApiCache>((ref) {
+  return XjitApiCache(ref.watch(xjitApiClientProvider));
+});
+
+class XjitApiCache {
+  XjitApiCache(this._client);
+
+  final XjitApiClient _client;
+  final Map<String, Future<Map<String, dynamic>>> _runCache = {};
+  Future<bool>? _healthCache;
+
+  Future<bool> health({bool forceRefresh = false}) {
+    if (!forceRefresh && _healthCache != null) {
+      return _healthCache!;
+    }
+
+    late final Future<bool> future;
+    future = _client.health().catchError((Object error, StackTrace stackTrace) {
+      if (identical(_healthCache, future)) {
+        _healthCache = null;
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    });
+    _healthCache = future;
+    return future;
+  }
+
+  Future<Map<String, dynamic>> run(
+    XjitFeature feature, {
+    required String username,
+    required String password,
+    Map<String, dynamic> params = const {},
+    bool forceRefresh = false,
+  }) {
+    final key = _runKey(username: username, feature: feature, params: params);
+    final cached = _runCache[key];
+    if (!forceRefresh && cached != null) {
+      return cached;
+    }
+
+    late final Future<Map<String, dynamic>> future;
+    future = _client
+        .run(feature, username: username, password: password, params: params)
+        .catchError((Object error, StackTrace stackTrace) {
+          if (identical(_runCache[key], future)) {
+            _runCache.remove(key);
+          }
+          Error.throwWithStackTrace(error, stackTrace);
+        });
+    _runCache[key] = future;
+    return future;
+  }
+
+  void clear() {
+    _healthCache = null;
+    _runCache.clear();
+  }
+
+  String _runKey({
+    required String username,
+    required XjitFeature feature,
+    required Map<String, dynamic> params,
+  }) {
+    return jsonEncode({
+      'username': username,
+      'feature': feature.value,
+      'params': _normalize(params),
+    });
+  }
+
+  Object? _normalize(Object? value) {
+    if (value is Map) {
+      final entries = value.entries.toList()
+        ..sort((a, b) => a.key.toString().compareTo(b.key.toString()));
+      return {
+        for (final entry in entries)
+          entry.key.toString(): _normalize(entry.value),
+      };
+    }
+    if (value is List) {
+      return value.map(_normalize).toList();
+    }
+    return value;
+  }
+}
 
 class XjitApiClient {
   const XjitApiClient(this._dio);

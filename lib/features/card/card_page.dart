@@ -27,7 +27,7 @@ class _CardPageState extends ConsumerState<CardPage> {
     _future = _load();
   }
 
-  Future<CardSnapshot> _load() async {
+  Future<CardSnapshot> _load({bool forceRefresh = false}) async {
     final session = ref
         .read(authControllerProvider)
         .when(
@@ -38,25 +38,27 @@ class _CardPageState extends ConsumerState<CardPage> {
     if (session == null) {
       throw const XjitApiException('请先登录');
     }
-    final api = ref.read(xjitApiClientProvider);
+    final api = ref.read(xjitApiCacheProvider);
     final results = await Future.wait([
       api.run(
         XjitFeature.cardBalance,
         username: session.username,
         password: session.password,
+        forceRefresh: forceRefresh,
       ),
       api.run(
         XjitFeature.cardTransactions,
         username: session.username,
         password: session.password,
         params: const {'pageSize': 20},
+        forceRefresh: forceRefresh,
       ),
     ]);
     return CardSnapshot(balance: results[0], transactions: results[1]);
   }
 
   Future<void> _refresh() async {
-    final future = _load();
+    final future = _load(forceRefresh: true);
     setState(() {
       _future = future;
     });

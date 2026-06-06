@@ -42,7 +42,7 @@ class _FeatureDataPageState extends ConsumerState<FeatureDataPage> {
     _future = _load();
   }
 
-  Future<Map<String, dynamic>> _load() async {
+  Future<Map<String, dynamic>> _load({bool forceRefresh = false}) async {
     final session = ref
         .read(authControllerProvider)
         .when(
@@ -54,17 +54,18 @@ class _FeatureDataPageState extends ConsumerState<FeatureDataPage> {
       throw const XjitApiException('请先登录');
     }
     return ref
-        .read(xjitApiClientProvider)
+        .read(xjitApiCacheProvider)
         .run(
           widget.feature,
           username: session.username,
           password: session.password,
           params: widget.params,
+          forceRefresh: forceRefresh,
         );
   }
 
   Future<void> _refresh() async {
-    final future = _load();
+    final future = _load(forceRefresh: true);
     setState(() {
       _future = future;
     });

@@ -56,7 +56,10 @@ class _ElectricityPageState extends ConsumerState<ElectricityPage> {
         );
   }
 
-  Future<Map<String, dynamic>> _load(String room) async {
+  Future<Map<String, dynamic>> _load(
+    String room, {
+    bool forceRefresh = false,
+  }) async {
     final session = _currentSession();
     if (session == null) {
       throw const XjitApiException('请先登录');
@@ -69,17 +72,18 @@ class _ElectricityPageState extends ConsumerState<ElectricityPage> {
     await storage.write(key: _roomKey, value: cleanRoom);
 
     return ref
-        .read(xjitApiClientProvider)
+        .read(xjitApiCacheProvider)
         .run(
           XjitFeature.electricityAccount,
           username: session.username,
           password: session.password,
           params: {'roomQuery': cleanRoom},
+          forceRefresh: forceRefresh,
         );
   }
 
   Future<void> _query() async {
-    final future = _load(_roomController.text);
+    final future = _load(_roomController.text, forceRefresh: true);
     setState(() {
       _future = future;
     });
@@ -184,7 +188,10 @@ class _ElectricityPageState extends ConsumerState<ElectricityPage> {
                   return const LoadingPanel();
                 }
                 if (snapshot.hasError) {
-                  return ErrorPanel(error: snapshot.error!, onRetry: _query);
+                  return ErrorPanel(
+                    error: snapshot.error!,
+                    onRetry: () => _query(),
+                  );
                 }
 
                 final data = snapshot.data ?? const <String, dynamic>{};

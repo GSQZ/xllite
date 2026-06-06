@@ -28,7 +28,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     _future = _load();
   }
 
-  Future<HomeSnapshot> _load() async {
+  Future<HomeSnapshot> _load({bool forceRefresh = false}) async {
     final session = ref
         .read(authControllerProvider)
         .when(
@@ -39,27 +39,30 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (session == null) {
       throw const XjitApiException('请先登录');
     }
-    final api = ref.read(xjitApiClientProvider);
+    final api = ref.read(xjitApiCacheProvider);
     final storage = ref.read(secureStorageProvider);
     final roomQuery = await storage.read(key: _roomKey);
     final cleanRoomQuery = roomQuery?.trim();
     final results = await Future.wait<Object?>([
-      api.health(),
+      api.health(forceRefresh: forceRefresh),
       api.run(
         XjitFeature.profile,
         username: session.username,
         password: session.password,
+        forceRefresh: forceRefresh,
       ),
       api.run(
         XjitFeature.schedule,
         username: session.username,
         password: session.password,
+        forceRefresh: forceRefresh,
       ),
       _safeRun(
         api,
         XjitFeature.cardBalance,
         username: session.username,
         password: session.password,
+        forceRefresh: forceRefresh,
       ),
       cleanRoomQuery == null || cleanRoomQuery.isEmpty
           ? Future<Map<String, dynamic>?>.value()
@@ -69,6 +72,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               username: session.username,
               password: session.password,
               params: {'roomQuery': cleanRoomQuery},
+              forceRefresh: forceRefresh,
             ),
     ]);
     return HomeSnapshot(
@@ -82,11 +86,12 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<Map<String, dynamic>?> _safeRun(
-    XjitApiClient api,
+    XjitApiCache api,
     XjitFeature feature, {
     required String username,
     required String password,
     Map<String, dynamic> params = const {},
+    bool forceRefresh = false,
   }) async {
     try {
       return await api.run(
@@ -94,6 +99,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         username: username,
         password: password,
         params: params,
+        forceRefresh: forceRefresh,
       );
     } catch (_) {
       return null;
@@ -101,7 +107,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _refresh() async {
-    final future = _load();
+    final future = _load(forceRefresh: true);
     setState(() {
       _future = future;
     });
