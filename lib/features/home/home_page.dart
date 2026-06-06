@@ -44,7 +44,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final roomQuery = await storage.read(key: _roomKey);
     final cleanRoomQuery = roomQuery?.trim();
     final results = await Future.wait<Object?>([
-      api.health(forceRefresh: forceRefresh),
       api.run(
         XjitFeature.profile,
         username: session.username,
@@ -76,11 +75,10 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
     ]);
     return HomeSnapshot(
-      health: results[0] as bool,
-      profile: results[1] as Map<String, dynamic>,
-      schedule: results[2] as Map<String, dynamic>,
-      cardBalance: results[3] as Map<String, dynamic>?,
-      electricity: results[4] as Map<String, dynamic>?,
+      profile: results[0] as Map<String, dynamic>,
+      schedule: results[1] as Map<String, dynamic>,
+      cardBalance: results[2] as Map<String, dynamic>?,
+      electricity: results[3] as Map<String, dynamic>?,
       roomQuery: cleanRoomQuery,
     );
   }
@@ -139,7 +137,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     } else {
       await storage.write(key: _roomKey, value: cleanRoom);
     }
-    await _refresh();
+    final future = _load();
+    setState(() {
+      _future = future;
+    });
+    try {
+      await future;
+    } catch (_) {
+      // FutureBuilder owns the visible error state.
+    }
   }
 
   Future<void> _openElectricity() async {
@@ -156,9 +162,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const ElectricityPage()));
-    if (mounted) {
-      await _refresh();
-    }
   }
 
   @override
@@ -213,7 +216,6 @@ class _HomePageState extends ConsumerState<HomePage> {
 
 class HomeSnapshot {
   const HomeSnapshot({
-    required this.health,
     required this.profile,
     required this.schedule,
     required this.cardBalance,
@@ -221,7 +223,6 @@ class HomeSnapshot {
     required this.roomQuery,
   });
 
-  final bool health;
   final Map<String, dynamic> profile;
   final Map<String, dynamic> schedule;
   final Map<String, dynamic>? cardBalance;

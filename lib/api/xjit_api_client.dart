@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../core/config/app_config.dart';
 import 'xjit_features.dart';
@@ -33,6 +35,7 @@ class XjitApiCache {
   final XjitApiClient _client;
   final Map<String, Future<Map<String, dynamic>>> _runCache = {};
   Future<bool>? _healthCache;
+  Future<Directory>? _cacheDirectory;
 
   Future<bool> health({bool forceRefresh = false}) {
     if (!forceRefresh && _healthCache != null) {
@@ -64,9 +67,15 @@ class XjitApiCache {
     }
 
     late final Future<Map<String, dynamic>> future;
-    future = _client
-        .run(feature, username: username, password: password, params: params)
-        .catchError((Object error, StackTrace stackTrace) {
+    future =
+        _runCached(
+          key: key,
+          feature: feature,
+          username: username,
+          password: password,
+          params: params,
+          forceRefresh: forceRefresh,
+        ).catchError((Object error, StackTrace stackTrace) {
           if (identical(_runCache[key], future)) {
             _runCache.remove(key);
           }
@@ -76,9 +85,111 @@ class XjitApiCache {
     return future;
   }
 
-  void clear() {
+  Future<void> clear() async {
     _healthCache = null;
     _runCache.clear();
+    try {
+      final directory = await _runCacheDirectory();
+      _cacheDirectory = null;
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
+    } catch (_) {
+      _cacheDirectory = null;
+    }
+  }
+
+  Future<Map<String, dynamic>> _runCached({
+    required String key,
+    required XjitFeature feature,
+    required String username,
+    required String password,
+    required Map<String, dynamic> params,
+    required bool forceRefresh,
+  }) async {
+    if (!forceRefresh) {
+      final diskCache = await _readRunCache(key);
+      if (diskCache != null) {
+        return diskCache;
+      }
+    }
+
+    final data = await _client.run(
+      feature,
+      username: username,
+      password: password,
+      params: params,
+    );
+    await _writeRunCache(key, data);
+    return data;
+  }
+
+  Future<Map<String, dynamic>?> _readRunCache(String key) async {
+    try {
+      final file = await _cacheFile(key);
+      if (!await file.exists()) {
+        return null;
+      }
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is! Map) {
+        return null;
+      }
+      final data = decoded['data'];
+      if (data is Map<String, dynamic>) {
+        return data;
+      }
+      if (data is Map) {
+        return Map<String, dynamic>.from(data);
+      }
+    } catch (_) {
+      await _deleteRunCache(key);
+    }
+    return null;
+  }
+
+  Future<void> _writeRunCache(String key, Map<String, dynamic> data) async {
+    try {
+      final file = await _cacheFile(key);
+      await file.writeAsString(jsonEncode({'data': data}), flush: true);
+    } catch (_) {
+      // Cache writes must never break the real request path.
+    }
+  }
+
+  Future<void> _deleteRunCache(String key) async {
+    try {
+      final file = await _cacheFile(key);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // Nothing useful to do for a broken cache file.
+    }
+  }
+
+  Future<File> _cacheFile(String key) async {
+    final directory = await _runCacheDirectory();
+    final name = base64Url.encode(utf8.encode(key)).replaceAll('=', '');
+    return File('${directory.path}/$name.json');
+  }
+
+  Future<Directory> _runCacheDirectory() async {
+    final existing = _cacheDirectory;
+    if (existing != null) {
+      return existing;
+    }
+    final future = _createCacheDirectory();
+    _cacheDirectory = future;
+    return future;
+  }
+
+  Future<Directory> _createCacheDirectory() async {
+    final supportDirectory = await getApplicationSupportDirectory();
+    final directory = Directory('${supportDirectory.path}/xjit_api_cache');
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+    return directory;
   }
 
   String _runKey({

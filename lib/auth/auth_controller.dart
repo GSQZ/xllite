@@ -47,7 +47,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
       throw const XjitApiException('请输入学号和 CAS 密码');
     }
 
-    ref.read(xjitApiCacheProvider).clear();
+    await ref.read(xjitApiCacheProvider).clear();
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final api = ref.read(xjitApiClientProvider);
@@ -73,7 +73,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     final storage = ref.read(secureStorageProvider);
     await storage.delete(key: _usernameKey);
     await storage.delete(key: _passwordKey);
-    ref.read(xjitApiCacheProvider).clear();
+    await ref.read(xjitApiCacheProvider).clear();
     state = const AsyncData(null);
   }
 
