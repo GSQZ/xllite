@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../api/xjit_features.dart';
 import '../common/async_content.dart';
@@ -138,7 +139,7 @@ class _ScheduleCalendarState extends State<_ScheduleCalendar> {
             const EmptyPanel(
               title: '这天没有课程',
               subtitle: '可以切换上方星期查看其他课程。',
-              icon: Icons.event_available_outlined,
+              icon: LucideIcons.calendarCheck,
             )
           else
             ...selectedCourses.map((course) {
@@ -413,17 +414,17 @@ class _CalendarHeader extends StatelessWidget {
         ),
         IconButton(
           onPressed: onPreviousWeek,
-          icon: const Icon(Icons.chevron_left),
+          icon: const Icon(LucideIcons.chevronLeft),
           tooltip: '上一周',
         ),
         IconButton(
           onPressed: onToday,
-          icon: const Icon(Icons.today_outlined),
+          icon: const Icon(LucideIcons.calendarDays),
           tooltip: '回到今天',
         ),
         IconButton(
           onPressed: onNextWeek,
-          icon: const Icon(Icons.chevron_right),
+          icon: const Icon(LucideIcons.chevronRight),
           tooltip: '下一周',
         ),
       ],
@@ -1158,7 +1159,7 @@ class _AgendaCourseCard extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.place_outlined, size: 16, color: accent),
+                            Icon(LucideIcons.mapPin, size: 16, color: accent),
                             const SizedBox(width: 7),
                             Expanded(
                               child: Text(

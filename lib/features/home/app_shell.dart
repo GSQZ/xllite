@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../card/card_page.dart';
 import '../home/home_page.dart';
 import '../schedule/schedule_page.dart';
 import '../settings/settings_page.dart';
+import '../../ui/xl_widgets.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -26,28 +28,28 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (index) => setState(() => _index = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+      bottomNavigationBar: XLBottomNav(
+        currentIndex: _index,
+        onSelected: (index) => setState(() => _index = index),
+        items: const [
+          XLBottomNavItem(
+            icon: LucideIcons.house,
+            activeIcon: LucideIcons.house500,
             label: '首页',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
+          XLBottomNavItem(
+            icon: LucideIcons.calendarDays,
+            activeIcon: LucideIcons.calendarDays500,
             label: '课表',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.credit_card_outlined),
-            selectedIcon: Icon(Icons.credit_card),
+          XLBottomNavItem(
+            icon: LucideIcons.creditCard,
+            activeIcon: LucideIcons.creditCard500,
             label: '校园卡',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+          XLBottomNavItem(
+            icon: LucideIcons.userRound,
+            activeIcon: LucideIcons.userRound500,
             label: '我的',
           ),
         ],

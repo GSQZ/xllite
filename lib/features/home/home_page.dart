@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../api/xjit_api_client.dart';
 import '../../api/xjit_features.dart';
 import '../../auth/auth_controller.dart';
+import '../../ui/xl_theme.dart';
+import '../../ui/xl_widgets.dart';
 import '../card/card_page.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
@@ -183,30 +187,37 @@ class _HomePageState extends ConsumerState<HomePage> {
 
           return RefreshIndicator(
             onRefresh: _refresh,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _WelcomeHeader(name: name),
-                const SizedBox(height: 16),
-                _TodayCoursePanel(schedule: data.schedule),
-                const SizedBox(height: 16),
-                _CampusSummaryRow(
-                  cardBalance: data.cardBalance,
-                  electricity: data.electricity,
-                  roomQuery: data.roomQuery,
-                  onElectricityTap: _openElectricity,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '常用功能',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const _FeatureGrid(),
-              ],
-            ),
+            child:
+                ListView(
+                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+                      children: [
+                        _WelcomeHeader(name: name),
+                        const SizedBox(height: 16),
+                        _TodayCoursePanel(schedule: data.schedule),
+                        const SizedBox(height: 16),
+                        _CampusSummaryRow(
+                          cardBalance: data.cardBalance,
+                          electricity: data.electricity,
+                          roomQuery: data.roomQuery,
+                          onElectricityTap: _openElectricity,
+                        ),
+                        const SizedBox(height: 16),
+                        const XLSectionHeader(
+                          title: '常用功能',
+                          padding: EdgeInsets.only(left: 2),
+                        ),
+                        const SizedBox(height: 10),
+                        const _FeatureGrid(),
+                      ],
+                    )
+                    .animate()
+                    .fadeIn(duration: 180.ms)
+                    .slideY(
+                      begin: 0.01,
+                      end: 0,
+                      duration: 220.ms,
+                      curve: Curves.easeOutCubic,
+                    ),
           );
         },
       ),
@@ -237,49 +248,46 @@ class _WelcomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final greeting = _greetingFor(_shortName(name));
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.primaryContainer.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
-        child: Row(
-          children: [
-            Container(
-              width: 3,
-              height: 42,
-              decoration: BoxDecoration(
-                color: colors.primary,
-                borderRadius: BorderRadius.circular(99),
-              ),
+    return XLCard(
+      color: XLColors.brandSoft,
+      borderColor: const Color(0xFFDDE6FF),
+      radius: 22,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 46,
+            decoration: BoxDecoration(
+              color: XLColors.brand,
+              borderRadius: BorderRadius.circular(99),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    greeting.title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting.title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: XLColors.ink,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    greeting.subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  greeting.subtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: XLColors.inkSecondary,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -343,7 +351,7 @@ class _CampusSummaryRow extends StatelessWidget {
             title: '一卡通余额',
             value: cardText,
             hint: '校园卡',
-            icon: Icons.credit_card_outlined,
+            icon: LucideIcons.creditCard,
             onTap: () => _open(context, const CardPage()),
           ),
         ),
@@ -353,7 +361,7 @@ class _CampusSummaryRow extends StatelessWidget {
             title: '宿舍电费',
             value: electricityText,
             hint: hasRoom ? roomQuery! : '点击绑定',
-            icon: Icons.bolt_outlined,
+            icon: LucideIcons.bolt,
             onTap: onElectricityTap,
           ),
         ),
@@ -469,55 +477,52 @@ class _SummaryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return XLCard(
+      onTap: onTap,
+      radius: 18,
+      padding: const EdgeInsets.all(15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(icon, size: 18, color: colors.onSurfaceVariant),
-                  const Spacer(),
-                  const Icon(
-                    Icons.chevron_right,
-                    size: 18,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                hint,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+              Icon(icon, size: 19, color: colors.onSurfaceVariant),
+              const Spacer(),
+              const Icon(
+                LucideIcons.chevronRight,
+                size: 17,
+                color: XLColors.inkTertiary,
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: XLColors.ink,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            hint,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+          ),
+        ],
       ),
     );
   }
@@ -536,7 +541,7 @@ class _TodayCoursePanel extends StatelessWidget {
 
     if (courses.isEmpty) {
       return const InfoCard(
-        icon: Icons.event_available_outlined,
+        icon: LucideIcons.calendarCheck,
         title: '今天没有课程',
         subtitle: '可以去课表查看其他日期安排。',
       );
@@ -544,27 +549,26 @@ class _TodayCoursePanel extends StatelessWidget {
 
     if (active == null && next == null) {
       return const InfoCard(
-        icon: Icons.done_all_outlined,
+        icon: LucideIcons.checkCheck,
         title: '今天课程已结束',
         subtitle: '可以去课表查看明天安排。',
       );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (active != null && next != null) ...[
-              _CurrentCourseHint(course: active),
-              const SizedBox(height: 10),
-            ],
-            if (next != null) _NextCourseBrief(course: next, label: '下一节课'),
-            if (next == null && active != null)
-              _NextCourseBrief(course: active, label: '正在上课'),
+    return XLCard(
+      radius: 20,
+      padding: const EdgeInsets.all(15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (active != null && next != null) ...[
+            _CurrentCourseHint(course: active),
+            const SizedBox(height: 12),
           ],
-        ),
+          if (next != null) _NextCourseBrief(course: next, label: '下一节课'),
+          if (next == null && active != null)
+            _NextCourseBrief(course: active, label: '正在上课'),
+        ],
       ),
     );
   }
@@ -722,10 +726,13 @@ class _CurrentCourseHint extends StatelessWidget {
 
     return Row(
       children: [
-        const Icon(
-          Icons.radio_button_checked,
-          size: 13,
-          color: Color(0xFF10B981),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: XLColors.success,
+            shape: BoxShape.circle,
+          ),
         ),
         const SizedBox(width: 6),
         Expanded(
@@ -763,7 +770,7 @@ class _NextCourseBrief extends StatelessWidget {
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colors.primary,
+                color: XLColors.brand,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -781,11 +788,7 @@ class _NextCourseBrief extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              Icons.place_outlined,
-              size: 18,
-              color: colors.onSurfaceVariant,
-            ),
+            Icon(LucideIcons.mapPin, size: 18, color: colors.onSurfaceVariant),
             const SizedBox(width: 8),
             Text(
               '待会儿去',
@@ -916,13 +919,13 @@ class _FeatureGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       _FeatureShortcut(
-        Icons.event_note_outlined,
+        LucideIcons.calendarCheck,
         '考试',
         '安排和座位',
         onTap: () => _open(context, const ExamsPage()),
       ),
       _FeatureShortcut(
-        Icons.school_outlined,
+        LucideIcons.graduationCap,
         '成绩',
         '学分绩点',
         onTap: () => _open(context, const GradesPage()),
@@ -958,37 +961,37 @@ class _FeatureShortcut extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Icon(icon, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+    return XLCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(15),
+      radius: 18,
+      child: Row(
+        children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 25),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: XLColors.ink,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: XLColors.inkSecondary),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

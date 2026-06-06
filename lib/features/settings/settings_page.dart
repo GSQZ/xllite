@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../auth/auth_controller.dart';
 import '../../core/config/app_config.dart';
+import '../../ui/xl_theme.dart';
 import '../common/async_content.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -27,13 +29,13 @@ class SettingsPage extends ConsumerWidget {
           child: Column(
             children: [
               InfoCard(
-                icon: Icons.account_circle_outlined,
+                icon: LucideIcons.userRound,
                 title: session?.username ?? '未登录',
                 subtitle: 'CAS 学号',
                 trailing: TextButton.icon(
                   onPressed: () =>
                       ref.read(authControllerProvider.notifier).signOut(),
-                  icon: Icon(Icons.logout, color: colors.error),
+                  icon: Icon(LucideIcons.logOut, color: colors.error, size: 18),
                   label: Text('退出登录', style: TextStyle(color: colors.error)),
                 ),
               ),
@@ -52,7 +54,7 @@ class SettingsPage extends ConsumerWidget {
               Text(
                 '${AppConfig.appName} ${AppConfig.appVersion}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colors.outline,
+                  color: XLColors.inkTertiary,
                   letterSpacing: 0,
                 ),
               ),

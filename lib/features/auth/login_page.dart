@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../auth/auth_controller.dart';
+import '../../ui/xl_theme.dart';
 import 'wechat_login_page.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -90,7 +92,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: '学号',
-                      prefixIcon: Icon(Icons.person_outline),
+                      prefixIcon: Icon(LucideIcons.userRound),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -101,15 +103,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     onSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
                       labelText: 'CAS 密码',
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon: const Icon(LucideIcons.lockKeyhole),
                       suffixIcon: IconButton(
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
                         },
                         icon: Icon(
                           _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                              ? LucideIcons.eye
+                              : LucideIcons.eyeOff,
                         ),
                       ),
                     ),
@@ -128,9 +130,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Icon(
-                              Icons.error_outline,
+                              LucideIcons.circleAlert,
                               size: 20,
-                              color: Color(0xFFB91C1C),
+                              color: XLColors.danger,
                             ),
                             const SizedBox(width: 8),
                             Expanded(child: Text(_error!)),
@@ -151,7 +153,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.login),
+                          : const Icon(LucideIcons.logIn),
                       label: Text(isLoading ? '正在验证' : '登录'),
                     ),
                   ),
@@ -161,7 +163,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     height: 48,
                     child: OutlinedButton.icon(
                       onPressed: isLoading ? null : _openWechatLogin,
-                      icon: const Icon(Icons.qr_code_scanner_outlined),
+                      icon: const Icon(LucideIcons.scanQrCode),
                       label: const Text('微信扫码登录'),
                     ),
                   ),

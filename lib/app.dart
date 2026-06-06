@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'auth/auth_controller.dart';
 import 'features/auth/login_page.dart';
 import 'features/home/app_shell.dart';
+import 'ui/xl_theme.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -22,10 +23,7 @@ class XinliLiteApp extends ConsumerWidget {
     return MaterialApp.router(
       title: '新理Lite',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
-        useMaterial3: true,
-      ),
+      theme: XLTheme.light,
       routerConfig: router,
     );
   }
@@ -56,24 +54,12 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F766E),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const SizedBox(
-                width: 68,
-                height: 68,
-                child: Center(
-                  child: Text(
-                    '新',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                'assets/branding/xinli_lite_app_icon_1024.png',
+                width: 72,
+                height: 72,
               ),
             ),
             const SizedBox(height: 18),

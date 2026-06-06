@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../api/xjit_features.dart';
+import '../../ui/xl_theme.dart';
+import '../../ui/xl_widgets.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
 
@@ -71,27 +74,35 @@ class _SummaryGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 1.7,
+        childAspectRatio: 1.9,
       ),
       itemBuilder: (context, index) {
         final item = items[index];
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(item.$1),
-                const SizedBox(height: 4),
-                Text(
-                  item.$2,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+        return XLCard(
+          padding: const EdgeInsets.all(14),
+          radius: 18,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                item.$1,
+                style: const TextStyle(
+                  color: XLColors.inkSecondary,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                item.$2,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: XLColors.ink,
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -133,7 +144,7 @@ class _GradeCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InfoCard(
-        icon: Icons.school_outlined,
+        icon: LucideIcons.graduationCap,
         title: textValue(item['courseName'], fallback: '未命名课程'),
         subtitle:
             '${textValue(item['term'])} · ${textValue(item['credit'])} 学分\n${textValue(item['examNature'])}',

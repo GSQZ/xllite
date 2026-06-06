@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../../ui/xl_theme.dart';
+import '../../ui/xl_widgets.dart';
 
 class LoadingPanel extends StatelessWidget {
   const LoadingPanel({super.key, this.label = '正在加载'});
@@ -13,7 +17,11 @@ class LoadingPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
             const SizedBox(height: 14),
             Text(label),
           ],
@@ -28,7 +36,7 @@ class EmptyPanel extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
-    this.icon = Icons.inbox_outlined,
+    this.icon = LucideIcons.inbox,
   });
 
   final String title;
@@ -45,7 +53,13 @@ class EmptyPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 44, color: colors.outline),
+            XLIconBox(
+              icon: icon,
+              size: 50,
+              iconSize: 24,
+              color: XLColors.surfaceMuted,
+              iconColor: colors.outline,
+            ),
             const SizedBox(height: 12),
             Text(
               title,
@@ -57,8 +71,8 @@ class EmptyPanel extends StatelessWidget {
               Text(
                 subtitle!,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                  color: colors.onSurfaceVariant,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -70,11 +84,7 @@ class EmptyPanel extends StatelessWidget {
 }
 
 class ErrorPanel extends StatelessWidget {
-  const ErrorPanel({
-    super.key,
-    required this.error,
-    required this.onRetry,
-  });
+  const ErrorPanel({super.key, required this.error, required this.onRetry});
 
   final Object error;
   final VoidCallback onRetry;
@@ -87,7 +97,13 @@ class ErrorPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 44, color: Color(0xFFB91C1C)),
+            const XLIconBox(
+              icon: LucideIcons.circleAlert,
+              size: 50,
+              iconSize: 24,
+              color: Color(0xFFFFEBEE),
+              iconColor: XLColors.danger,
+            ),
             const SizedBox(height: 12),
             Text(
               error.toString(),
@@ -97,7 +113,7 @@ class ErrorPanel extends StatelessWidget {
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(LucideIcons.refreshCw, size: 18),
               label: const Text('重试'),
             ),
           ],
@@ -127,52 +143,42 @@ class InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              if (icon != null) ...[
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: colors.primaryContainer.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(12),
+    return XLCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            XLIconBox(icon: icon!, iconColor: colors.primary),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: XLColors.ink,
                   ),
-                  child: Icon(icon, color: colors.primary),
                 ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                if (subtitle != null && subtitle!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
                     ),
-                    if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: colors.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              ...?(trailing == null ? null : [trailing!]),
-            ],
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+        ],
       ),
     );
   }

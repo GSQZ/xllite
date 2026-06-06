@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../api/xjit_api_client.dart';
 import '../../api/xjit_features.dart';
 import '../../auth/auth_controller.dart';
+import '../../ui/xl_widgets.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
 import '../common/payment_webview_page.dart';
@@ -77,7 +79,7 @@ class _CardPageState extends ConsumerState<CardPage> {
         actions: [
           IconButton(
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(LucideIcons.refreshCw),
             tooltip: '刷新',
           ),
         ],
@@ -111,13 +113,13 @@ class _CardPageState extends ConsumerState<CardPage> {
                       ),
                     ),
                     _CardHeaderAction(
-                      icon: Icons.qr_code_2_outlined,
+                      icon: LucideIcons.qrCode,
                       tooltip: '付款码',
                       onTap: _openPaymentCode,
                     ),
                     const SizedBox(width: 8),
                     _CardHeaderAction(
-                      icon: Icons.add_card_outlined,
+                      icon: LucideIcons.walletCards,
                       tooltip: '充值',
                       onTap: _openRecharge,
                     ),
@@ -254,25 +256,12 @@ class _CardHeaderAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: colors.surfaceContainerHighest.withValues(alpha: 0.45),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: SizedBox(
-            width: 36,
-            height: 36,
-            child: Icon(icon, size: 19, color: colors.onSurfaceVariant),
-          ),
-        ),
-      ),
+    return XLIconButton(
+      icon: icon,
+      onTap: onTap,
+      tooltip: tooltip,
+      size: 38,
+      iconSize: 19,
     );
   }
 }
@@ -287,7 +276,7 @@ class _BalanceCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InfoCard(
-        icon: Icons.account_balance_wallet_outlined,
+        icon: LucideIcons.walletCards,
         title: textValue(item['typeName'], fallback: '账户'),
         subtitle: '账户类型 ${textValue(item['typeCode'])}',
         trailing: Text(
@@ -311,7 +300,7 @@ class _TransactionCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InfoCard(
-        icon: Icons.receipt_long_outlined,
+        icon: LucideIcons.receiptText,
         title: textValue(
           item['merchantName'],
           fallback: textValue(item['summary']),

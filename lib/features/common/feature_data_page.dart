@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../api/xjit_api_client.dart';
 import '../../api/xjit_features.dart';
@@ -84,7 +85,7 @@ class _FeatureDataPageState extends ConsumerState<FeatureDataPage> {
         actions: [
           IconButton(
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(LucideIcons.refreshCw),
             tooltip: '刷新',
           ),
         ],
