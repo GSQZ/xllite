@@ -25,6 +25,7 @@ class PaymentWebViewPage extends StatefulWidget {
 class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
   late final WebViewController _controller;
   late final _PaymentEntry _entry;
+  final Set<String> _refererLoadedUrls = {};
   var _loading = true;
 
   @override
@@ -60,12 +61,11 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
         _setLoading(false);
         return;
       }
-      await _controller.loadRequest(
-        _entry.uri!,
-        headers: _entry.needsReferer
-            ? const {'Referer': _newcardReferer}
-            : const <String, String>{},
-      );
+      final headers = _refererHeaders(_entry.uri!);
+      if (headers.isNotEmpty) {
+        _refererLoadedUrls.add(_entry.uri!.toString());
+      }
+      await _controller.loadRequest(_entry.uri!, headers: headers);
     } else {
       await _controller.loadHtmlString(
         _paymentHtml(_entry.htmlPost),
@@ -78,7 +78,18 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
     NavigationRequest request,
   ) async {
     final uri = Uri.tryParse(request.url);
-    if (uri == null || _canOpenInWebView(uri)) {
+    if (uri == null) {
+      return NavigationDecision.navigate;
+    }
+
+    if (_shouldAttachReferer(uri) &&
+        !_refererLoadedUrls.contains(uri.toString())) {
+      _refererLoadedUrls.add(uri.toString());
+      unawaited(_controller.loadRequest(uri, headers: _refererHeaders(uri)));
+      return NavigationDecision.prevent;
+    }
+
+    if (_canOpenInWebView(uri)) {
       return NavigationDecision.navigate;
     }
 
@@ -90,11 +101,36 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
   }
 
   Future<bool> _openExternalUri(Uri uri) async {
+    if (uri.scheme.toLowerCase() == 'intent') {
+      return _openAndroidIntentUri(uri);
+    }
+
     try {
       return await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       return false;
     }
+  }
+
+  Future<bool> _openAndroidIntentUri(Uri uri) async {
+    final targetUri = _intentTargetUri(uri);
+    if (targetUri != null && await _openExternalUri(targetUri)) {
+      return true;
+    }
+
+    final fallbackUri = _intentFallbackUri(uri);
+    if (fallbackUri == null) {
+      return false;
+    }
+
+    if (_canOpenInWebView(fallbackUri)) {
+      await _controller.loadRequest(
+        fallbackUri,
+        headers: _refererHeaders(fallbackUri),
+      );
+      return true;
+    }
+    return _openExternalUri(fallbackUri);
   }
 
   bool _canOpenInWebView(Uri uri) {
@@ -107,6 +143,62 @@ class _PaymentWebViewPageState extends State<PaymentWebViewPage> {
         return true;
     }
     return false;
+  }
+
+  bool _shouldAttachReferer(Uri uri) {
+    final scheme = uri.scheme.toLowerCase();
+    if (scheme != 'http' && scheme != 'https') {
+      return false;
+    }
+    final host = uri.host.toLowerCase();
+    return _entry.needsReferer ||
+        host == 'wx.tenpay.com' ||
+        host.endsWith('.wx.tenpay.com');
+  }
+
+  Map<String, String> _refererHeaders(Uri uri) {
+    return _shouldAttachReferer(uri)
+        ? const {'Referer': _newcardReferer}
+        : const <String, String>{};
+  }
+
+  Uri? _intentTargetUri(Uri uri) {
+    final params = _intentParams(uri);
+    final scheme = params['scheme'];
+    if (scheme == null || scheme.isEmpty) {
+      return null;
+    }
+
+    final rawUrl = uri.toString();
+    final intentIndex = rawUrl.indexOf('#Intent;');
+    final body = intentIndex >= 0
+        ? rawUrl.substring('intent:'.length, intentIndex)
+        : rawUrl.substring('intent:'.length);
+    return Uri.tryParse('$scheme:$body');
+  }
+
+  Uri? _intentFallbackUri(Uri uri) {
+    final fallback = _intentParams(uri)['S.browser_fallback_url'];
+    if (fallback == null || fallback.isEmpty) {
+      return null;
+    }
+    try {
+      return Uri.tryParse(Uri.decodeComponent(fallback));
+    } catch (_) {
+      return Uri.tryParse(fallback);
+    }
+  }
+
+  Map<String, String> _intentParams(Uri uri) {
+    final result = <String, String>{};
+    for (final part in uri.fragment.split(';')) {
+      final separator = part.indexOf('=');
+      if (separator <= 0) {
+        continue;
+      }
+      result[part.substring(0, separator)] = part.substring(separator + 1);
+    }
+    return result;
   }
 
   void _setLoading(bool value) {
@@ -196,13 +288,20 @@ class _PaymentEntry {
     );
     final h5Url = textValue(payResult['h5Url'], fallback: '');
     final htmlPost = textValue(payResult['htmlPost'], fallback: '');
+    final payCode = textValue(payResult['payCode'], fallback: '');
+    final source = '$officialTransferUrl $h5Url $htmlPost'.toLowerCase();
+    final isWechatPay =
+        payCode == '02' ||
+        source.contains('wx.tenpay.com') ||
+        source.contains('weixin') ||
+        source.contains('wechat');
 
     final officialUri = Uri.tryParse(officialTransferUrl);
     if (_isUsableUri(officialUri)) {
       return _PaymentEntry(
         uri: officialUri,
         htmlPost: htmlPost,
-        needsReferer: false,
+        needsReferer: isWechatPay,
       );
     }
 
