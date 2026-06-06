@@ -304,7 +304,8 @@ class _WechatLoginPageState extends ConsumerState<WechatLoginPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _error ?? '授权完成后会自动返回新理Lite',
+                            _error ??
+                                '受微信限制，同一台手机截图识别二维码无法解决。请用另一台设备扫码，或返回使用账号密码登录。',
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: colors.onSurfaceVariant),
                           ),
