@@ -204,10 +204,32 @@ class _CardPageState extends ConsumerState<CardPage> {
       return;
     }
 
-    await showModalBottomSheet<void>(
+    await showGeneralDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) => _PaymentCodeSheet(session: session),
+      barrierDismissible: true,
+      barrierLabel: '关闭付款码',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _PaymentCodeTopDialog(session: session);
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, -0.08),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
@@ -634,6 +656,38 @@ class _RechargeForm extends StatelessWidget {
   }
 }
 
+class _PaymentCodeTopDialog extends StatelessWidget {
+  const _PaymentCodeTopDialog({required this.session});
+
+  final AuthSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Material(
+              color: colors.surface,
+              elevation: 10,
+              shadowColor: Colors.black.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(24),
+              clipBehavior: Clip.antiAlias,
+              child: _PaymentCodeSheet(session: session),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PaymentCodeSheet extends ConsumerStatefulWidget {
   const _PaymentCodeSheet({required this.session});
 
@@ -726,6 +780,11 @@ class _PaymentCodeSheetState extends ConsumerState<_PaymentCodeSheet> {
                       onPressed: _refreshCode,
                       icon: const Icon(Icons.refresh),
                       tooltip: '刷新',
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                      tooltip: '关闭',
                     ),
                   ],
                 ),
