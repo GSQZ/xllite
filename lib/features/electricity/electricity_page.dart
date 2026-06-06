@@ -422,6 +422,7 @@ class _ElectricityRechargeSheetState
   String? _selectedPayCode;
   String? _errorText;
   bool _paying = false;
+  bool _didApplyDefaultAmount = false;
 
   @override
   void initState() {
@@ -462,6 +463,25 @@ class _ElectricityRechargeSheetState
         );
       }
     });
+  }
+
+  void _ensureDefaultAmount(Map<String, dynamic> config) {
+    if (_didApplyDefaultAmount) {
+      return;
+    }
+    final amountOptions = mapList(config['amountOptions']);
+    if (amountOptions.isEmpty) {
+      return;
+    }
+    final amount = textValue(amountOptions.first['amount'], fallback: '');
+    if (amount.isEmpty) {
+      return;
+    }
+    _amountController.text = amount;
+    _amountController.selection = TextSelection.collapsed(
+      offset: amount.length,
+    );
+    _didApplyDefaultAmount = true;
   }
 
   Future<void> _pay(Map<String, dynamic> config) async {
@@ -622,6 +642,25 @@ class _ElectricityRechargeSheetState
     }
   }
 
+  Widget _buildRechargeForm(Map<String, dynamic> config) {
+    _ensureDefaultAmount(config);
+    return _ElectricityRechargeForm(
+      config: config,
+      amountController: _amountController,
+      passwordController: _passwordController,
+      selectedPayCode: _selectedPayCode,
+      errorText: _errorText,
+      paying: _paying,
+      onAmountChanged: _setAmount,
+      onPayCodeChanged: (value) {
+        setState(() => _selectedPayCode = value);
+      },
+      onSubmit: () {
+        _pay(config);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -686,20 +725,8 @@ class _ElectricityRechargeSheetState
                   else if (snapshot.hasError)
                     ErrorPanel(error: snapshot.error!, onRetry: _reloadConfig)
                   else
-                    _ElectricityRechargeForm(
-                      config: snapshot.data ?? const <String, dynamic>{},
-                      amountController: _amountController,
-                      passwordController: _passwordController,
-                      selectedPayCode: _selectedPayCode,
-                      errorText: _errorText,
-                      paying: _paying,
-                      onAmountChanged: _setAmount,
-                      onPayCodeChanged: (value) {
-                        setState(() => _selectedPayCode = value);
-                      },
-                      onSubmit: () {
-                        _pay(snapshot.data ?? const <String, dynamic>{});
-                      },
+                    _buildRechargeForm(
+                      snapshot.data ?? const <String, dynamic>{},
                     ),
                 ],
               );
@@ -756,13 +783,6 @@ class _ElectricityRechargeForm extends StatelessWidget {
         (payMethods.isEmpty
             ? ''
             : textValue(payMethods.first['code'], fallback: ''));
-
-    if (amountController.text.trim().isEmpty && amountOptions.isNotEmpty) {
-      amountController.text = textValue(
-        amountOptions.first['amount'],
-        fallback: '',
-      );
-    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -855,7 +875,7 @@ class _ElectricityRechargeForm extends StatelessWidget {
             children: amountOptions.map((option) {
               final amount = textValue(option['amount'], fallback: '');
               final label = textValue(option['name'], fallback: '$amount 元');
-              return _ChoicePill(
+              return XLChoicePill(
                 label: Text(label),
                 selected: amount == amountController.text.trim(),
                 onTap: () => onAmountChanged(amount),
@@ -887,7 +907,7 @@ class _ElectricityRechargeForm extends StatelessWidget {
             runSpacing: 8,
             children: payMethods.map((method) {
               final code = textValue(method['code'], fallback: '');
-              return _ChoicePill(
+              return XLChoicePill(
                 label: Text(textValue(method['name'], fallback: '支付方式')),
                 selected: code == activePayCode,
                 onTap: () => onPayCodeChanged(code),
@@ -908,7 +928,7 @@ class _ElectricityRechargeForm extends StatelessWidget {
         ],
         const SizedBox(height: 18),
         if (errorText != null && errorText!.isNotEmpty) ...[
-          _SheetErrorBanner(message: errorText!),
+          XLSheetErrorBanner(message: errorText!),
           const SizedBox(height: 12),
         ],
         if (paying) ...[
@@ -992,103 +1012,6 @@ class _MiniMetric extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ChoicePill extends StatelessWidget {
-  const _ChoicePill({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Widget label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? XLColors.brandSoft : XLColors.surface,
-      borderRadius: BorderRadius.circular(15),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(15),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(
-              color: selected
-                  ? XLColors.brand.withValues(alpha: 0.18)
-                  : XLColors.line,
-              width: 1.1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (selected) ...[
-                const Icon(LucideIcons.check, size: 16, color: XLColors.brand),
-                const SizedBox(width: 7),
-              ],
-              DefaultTextStyle.merge(
-                style: TextStyle(
-                  color: selected ? XLColors.ink : XLColors.inkSecondary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-                child: label,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SheetErrorBanner extends StatelessWidget {
-  const _SheetErrorBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: XLColors.danger.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: XLColors.danger.withValues(alpha: 0.16)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              LucideIcons.circleAlert,
-              size: 18,
-              color: XLColors.danger,
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                message,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: XLColors.danger,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

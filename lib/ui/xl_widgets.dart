@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'xl_theme.dart';
 
@@ -121,6 +122,104 @@ class XLIconButton extends StatelessWidget {
       return button;
     }
     return Tooltip(message: tooltip!, child: button);
+  }
+}
+
+class XLChoicePill extends StatelessWidget {
+  const XLChoicePill({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Widget label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? XLColors.brandSoft : XLColors.surface,
+      borderRadius: BorderRadius.circular(15),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: selected
+                  ? XLColors.brand.withValues(alpha: 0.18)
+                  : XLColors.line,
+              width: 1.1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                const Icon(LucideIcons.check, size: 16, color: XLColors.brand),
+                const SizedBox(width: 7),
+              ],
+              DefaultTextStyle.merge(
+                style: TextStyle(
+                  color: selected ? XLColors.ink : XLColors.inkSecondary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+                child: label,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class XLSheetErrorBanner extends StatelessWidget {
+  const XLSheetErrorBanner({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: XLColors.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: XLColors.danger.withValues(alpha: 0.16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              LucideIcons.circleAlert,
+              size: 18,
+              color: XLColors.danger,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: XLColors.danger,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

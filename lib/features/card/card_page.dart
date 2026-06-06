@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../api/xjit_api_client.dart';
 import '../../api/xjit_features.dart';
 import '../../auth/auth_controller.dart';
+import '../../ui/xl_theme.dart';
 import '../../ui/xl_widgets.dart';
 import '../common/async_content.dart';
 import '../common/feature_data_page.dart';
@@ -332,6 +333,7 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
   final TextEditingController _amountController = TextEditingController();
   String? _selectedPayCode;
   bool _creating = false;
+  bool _didApplyDefaultAmount = false;
 
   @override
   void initState() {
@@ -359,6 +361,36 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
     setState(() {
       _future = future;
     });
+  }
+
+  void _setAmount(String value) {
+    setState(() {
+      if (_amountController.text != value) {
+        _amountController.text = value;
+        _amountController.selection = TextSelection.collapsed(
+          offset: value.length,
+        );
+      }
+    });
+  }
+
+  void _ensureDefaultAmount(Map<String, dynamic> config) {
+    if (_didApplyDefaultAmount) {
+      return;
+    }
+    final amountOptions = mapList(config['amountOptions']);
+    if (amountOptions.isEmpty) {
+      return;
+    }
+    final amount = textValue(amountOptions.first['amount'], fallback: '');
+    if (amount.isEmpty) {
+      return;
+    }
+    _amountController.text = amount;
+    _amountController.selection = TextSelection.collapsed(
+      offset: amount.length,
+    );
+    _didApplyDefaultAmount = true;
   }
 
   Future<void> _createOrder(Map<String, dynamic> config) async {
@@ -419,16 +451,31 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Widget _buildRechargeForm(Map<String, dynamic> config) {
+    _ensureDefaultAmount(config);
+    return _RechargeForm(
+      config: config,
+      amountController: _amountController,
+      selectedPayCode: _selectedPayCode,
+      creating: _creating,
+      onAmountChanged: _setAmount,
+      onPayCodeChanged: (value) {
+        setState(() => _selectedPayCode = value);
+      },
+      onSubmit: () {
+        _createOrder(config);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return SafeArea(
       child: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.fromLTRB(
             18,
-            14,
+            10,
             18,
             18 + MediaQuery.viewInsetsOf(context).bottom,
           ),
@@ -439,6 +486,17 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: XLColors.line,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Text(
@@ -448,10 +506,20 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
                         ),
                       ),
                       const Spacer(),
-                      IconButton(
-                        onPressed: _reloadConfig,
-                        icon: const Icon(Icons.refresh),
+                      XLIconButton(
+                        onTap: _reloadConfig,
+                        icon: LucideIcons.refreshCw,
                         tooltip: '刷新',
+                        size: 38,
+                      ),
+                      const SizedBox(width: 8),
+                      XLIconButton(
+                        onTap: _creating
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        icon: LucideIcons.x,
+                        tooltip: '取消',
+                        size: 38,
                       ),
                     ],
                   ),
@@ -464,28 +532,15 @@ class _RechargeSheetState extends ConsumerState<_RechargeSheet> {
                   else if (snapshot.hasError)
                     ErrorPanel(error: snapshot.error!, onRetry: _reloadConfig)
                   else
-                    _RechargeForm(
-                      config: snapshot.data ?? const <String, dynamic>{},
-                      amountController: _amountController,
-                      selectedPayCode: _selectedPayCode,
-                      creating: _creating,
-                      onAmountChanged: (value) {
-                        setState(() => _amountController.text = value);
-                      },
-                      onPayCodeChanged: (value) {
-                        setState(() => _selectedPayCode = value);
-                      },
-                      onSubmit: () {
-                        _createOrder(
-                          snapshot.data ?? const <String, dynamic>{},
-                        );
-                      },
+                    _buildRechargeForm(
+                      snapshot.data ?? const <String, dynamic>{},
                     ),
                   const SizedBox(height: 10),
                   Text(
                     '下单后会打开学校支付页面，支付完成后返回并刷新余额。',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
+                      color: XLColors.inkSecondary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -519,7 +574,6 @@ class _RechargeForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final amountOptions = mapList(config['amountOptions']);
     final payMethods = mapList(config['payMethods']);
     final balance = textValue(config['balance'], fallback: '');
@@ -530,45 +584,47 @@ class _RechargeForm extends StatelessWidget {
             ? ''
             : textValue(payMethods.first['code'], fallback: ''));
 
-    if (amountController.text.trim().isEmpty && amountOptions.isNotEmpty) {
-      amountController.text = textValue(
-        amountOptions.first['amount'],
-        fallback: '',
-      );
-    }
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (balance.isNotEmpty || userName.isNotEmpty) ...[
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      userName.isEmpty ? '本人一卡通' : userName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+          XLCard(
+            radius: 18,
+            color: XLColors.surfaceMuted,
+            borderColor: Colors.transparent,
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                const XLIconBox(
+                  icon: LucideIcons.walletCards,
+                  size: 38,
+                  iconSize: 20,
+                  color: XLColors.surface,
+                  iconColor: XLColors.brand,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    userName.isEmpty ? '本人一卡通' : userName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: XLColors.ink,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
                     ),
                   ),
-                  if (balance.isNotEmpty)
-                    Text(
-                      '余额 $balance',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                      ),
+                ),
+                if (balance.isNotEmpty)
+                  Text(
+                    '余额 $balance',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: XLColors.inkSecondary,
+                      fontWeight: FontWeight.w800,
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 14),
@@ -576,7 +632,7 @@ class _RechargeForm extends StatelessWidget {
         Text(
           '金额',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colors.onSurfaceVariant,
+            color: XLColors.inkSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -589,10 +645,10 @@ class _RechargeForm extends StatelessWidget {
               final amount = textValue(option['amount'], fallback: '');
               final label = textValue(option['name'], fallback: '$amount 元');
               final selected = amount == amountController.text.trim();
-              return ChoiceChip(
+              return XLChoicePill(
                 label: Text(label),
                 selected: selected,
-                onSelected: (_) => onAmountChanged(amount),
+                onTap: () => onAmountChanged(amount),
               );
             }).toList(),
           ),
@@ -608,7 +664,7 @@ class _RechargeForm extends StatelessWidget {
         Text(
           '支付方式',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colors.onSurfaceVariant,
+            color: XLColors.inkSecondary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -621,24 +677,46 @@ class _RechargeForm extends StatelessWidget {
             runSpacing: 8,
             children: payMethods.map((method) {
               final code = textValue(method['code'], fallback: '');
-              return ChoiceChip(
+              return XLChoicePill(
                 label: Text(textValue(method['name'], fallback: '支付方式')),
                 selected: code == activePayCode,
-                onSelected: (_) => onPayCodeChanged(code),
+                onTap: () => onPayCodeChanged(code),
               );
             }).toList(),
           ),
         const SizedBox(height: 18),
-        FilledButton.icon(
-          onPressed: creating ? null : onSubmit,
-          icon: creating
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.payment_outlined),
-          label: Text(creating ? '正在下单' : '去支付'),
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: creating
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                  child: const Text('取消'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: creating ? null : onSubmit,
+                  icon: creating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(LucideIcons.walletCards, size: 18),
+                  label: Text(creating ? '正在下单' : '去支付'),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
