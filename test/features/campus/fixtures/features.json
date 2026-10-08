@@ -1,0 +1,773 @@
+{
+  "features": [
+    {
+      "name": "newcard.campus_code.qrcode",
+      "title": "校园付款码",
+      "system": "newcard",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "获取新卡片在线校园付款码。返回的 qrcode 是可消费凭证，App 需要按 expiresInSeconds 定时刷新。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {
+          "qrcodeType": {
+            "type": "string",
+            "description": "付款码类型；不传时使用学校配置的默认类型，当前可传空字符串",
+            "default": ""
+          },
+          "devCode": {
+            "type": "string",
+            "description": "设备标识；不传时使用 xjit-api",
+            "default": "xjit-api"
+          }
+        }
+      },
+      "requestExample": {
+        "feature": "newcard.campus_code.qrcode",
+        "params": {}
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "mode": "online",
+          "qrcode": "付款码字符串，App 用它生成二维码",
+          "qrcodeType": "",
+          "expiresInSeconds": 30,
+          "balance": "0.00",
+          "idSerial": "学号",
+          "userName": "姓名",
+          "displayInfo": true,
+          "displayBalance": true
+        }
+      }
+    },
+    {
+      "name": "newcard.recharge.config",
+      "title": "一卡通充值配置",
+      "system": "newcard",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "获取一卡通充值页配置，包括当前校园卡余额、可选充值金额和支付方式。创建充值订单前应先调用这个功能。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "requestExample": {
+        "feature": "newcard.recharge.config",
+        "params": {}
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "balance": "118.00",
+          "idSerial": "学号",
+          "username": "姓名",
+          "amountOptions": [
+            {
+              "id": "配置编号",
+              "amount": "50",
+              "name": "50元"
+            },
+            {
+              "id": "配置编号",
+              "amount": "100",
+              "name": "100元"
+            }
+          ],
+          "payMethods": [
+            {
+              "code": "01",
+              "tradeType": "WAP",
+              "name": "支付宝",
+              "h5": true,
+              "successToHome": false,
+              "signBind": null
+            },
+            {
+              "code": "02",
+              "tradeType": "WAP",
+              "name": "微信",
+              "h5": true,
+              "successToHome": false,
+              "signBind": null
+            }
+          ],
+          "canPayOther": true,
+          "hostApp": true,
+          "daLianPayEnable": true,
+          "wapPayEnable": false
+        }
+      }
+    },
+    {
+      "name": "newcard.recharge.create_order",
+      "title": "一卡通充值下单",
+      "system": "newcard",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "创建一卡通充值支付订单，返回支付入口。调用这个功能会在学校支付系统生成一笔待支付订单，但不会自动扣款。微信 WAP 支付优先打开 payResult.officialTransferUrl，或在 WebView 加载 payResult.h5Url 时带 Referer=https://newcard.xjit.edu.cn/。",
+      "paramsSchema": {
+        "type": "object",
+        "required": [
+          "amount",
+          "payCode"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string",
+            "description": "充值金额，必须大于 0，最多两位小数，例如 50"
+          },
+          "payCode": {
+            "type": "string",
+            "description": "支付方式编码，来自 newcard.recharge.config 的 payMethods.code，例如支付宝 01、微信 02"
+          },
+          "tradeType": {
+            "type": "string",
+            "default": "WAP",
+            "description": "支付交易类型，来自 newcard.recharge.config 的 payMethods.tradeType"
+          },
+          "returnUrl": {
+            "type": "string",
+            "description": "支付完成后的跳转地址；App 可以传自己的 H5 回跳页"
+          },
+          "otherIdserial": {
+            "type": "string",
+            "description": "给他人一卡通充值时传对方学号；学校配置允许时才有效"
+          },
+          "subOpenId": {
+            "type": "string",
+            "description": "微信 JSAPI 支付需要时传"
+          },
+          "subAppId": {
+            "type": "string",
+            "description": "微信 JSAPI 支付需要时传"
+          },
+          "signReturnUrl": {
+            "type": "string",
+            "description": "签约/免密流程回跳地址"
+          },
+          "raw": {
+            "type": "boolean",
+            "default": false,
+            "description": "是否返回学校支付接口原始 resultData"
+          }
+        }
+      },
+      "requestExample": {
+        "feature": "newcard.recharge.create_order",
+        "params": {
+          "amount": "50",
+          "payCode": "01",
+          "tradeType": "WAP"
+        }
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "amount": "50",
+          "payMethod": {
+            "code": "01",
+            "tradeType": "WAP",
+            "name": "支付宝"
+          },
+          "partnerJourno": "学校支付订单号",
+          "payResult": {
+            "type": "html_post",
+            "payCode": "01",
+            "partnerJourno": "学校支付订单号",
+            "h5Url": null,
+            "htmlPost": "<form>支付表单 HTML</form>",
+            "wechatJsapi": null
+          }
+        }
+      }
+    },
+    {
+      "name": "newcard.electricity.account",
+      "title": "宿舍电费/剩余电量查询",
+      "system": "newcard",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "按宿舍号查询剩余电量。调用方登录后只传 roomQuery，不需要处理 newcard tid 或学校系统 Authorization。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {
+          "roomQuery": {
+            "type": "string",
+            "description": "宿舍号简写，例如 5#524、3#312、9#312、5号楼524",
+            "examples": [
+              "9#312"
+            ]
+          },
+          "raw": {
+            "type": "boolean",
+            "default": false,
+            "description": "是否返回学校接口原始 JSON"
+          },
+          "location": {
+            "type": "object",
+            "description": "宿舍定位参数；通常不用传，优先用 roomQuery 查询静态映射表",
+            "properties": {
+              "bigArea": {
+                "type": "string"
+              },
+              "area": {
+                "type": "string"
+              },
+              "building": {
+                "type": "string"
+              },
+              "unit": {
+                "type": "string"
+              },
+              "level": {
+                "type": "string"
+              },
+              "room": {
+                "type": "string"
+              },
+              "subArea": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "requestExample": {
+        "feature": "newcard.electricity.account",
+        "params": {
+          "roomQuery": "9#312"
+        }
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "remainingElectricity": {
+            "value": "28.15",
+            "unit": "度"
+          },
+          "room": {
+            "query": "9#312",
+            "buildingName": "9号宿舍楼",
+            "levelName": "3层",
+            "roomName": "312房间"
+          }
+        }
+      }
+    },
+    {
+      "name": "newcard.electricity.recharge.config",
+      "title": "宿舍电费充值配置",
+      "system": "newcard",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "按宿舍号获取电费充值配置、当前剩余电量、校园卡余额、快捷金额和支付方式。创建电费充值支付前应先调用这个功能。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {
+          "roomQuery": {
+            "type": "string",
+            "description": "宿舍号简写，例如 5#524、3#312、9#312、5号楼524",
+            "examples": [
+              "9#312"
+            ]
+          },
+          "location": {
+            "type": "object",
+            "description": "宿舍定位参数；通常不用传，优先用 roomQuery 查询静态映射表"
+          }
+        }
+      },
+      "requestExample": {
+        "feature": "newcard.electricity.recharge.config",
+        "params": {
+          "roomQuery": "9#312"
+        }
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "room": {
+            "query": "9#312",
+            "buildingName": "9号宿舍楼",
+            "levelName": "3层",
+            "roomName": "312房间"
+          },
+          "account": {
+            "utilityAccount": "电费账号",
+            "utilityUsername": "户名",
+            "utilityStatusName": "正常",
+            "accStatusName": "正常"
+          },
+          "remainingElectricity": {
+            "value": "3.27",
+            "unit": "度"
+          },
+          "cardBalance": {
+            "value": "135.66",
+            "unit": "元"
+          },
+          "price": {
+            "value": "0.39",
+            "unit": "元/度"
+          },
+          "amountOptions": [
+            {
+              "id": "1",
+              "amount": "30",
+              "name": "30元"
+            },
+            {
+              "id": "2",
+              "amount": "50",
+              "name": "50元"
+            },
+            {
+              "id": "3",
+              "amount": "60",
+              "name": "60元"
+            }
+          ],
+          "payMethods": [
+            {
+              "code": "06",
+              "tradeType": null,
+              "name": "余额支付",
+              "h5": false,
+              "successToHome": false,
+              "signBind": null
+            }
+          ],
+          "needPaymentPassword": true,
+          "canPayOther": false,
+          "confirm": true,
+          "daLianPayEnable": false,
+          "hostApp": true,
+          "amtInputDisabled": false,
+          "tip": ""
+        }
+      }
+    },
+    {
+      "name": "newcard.electricity.recharge.pay",
+      "title": "宿舍电费充值支付",
+      "system": "newcard",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "按宿舍号发起电费充值支付。当前学校电费配置通常只开放 payCode=06 余额支付；传入 paymentPassword 后会直接从校园卡余额扣款。内部会按官方 H5 流程调用 getEncrypt，并用 SM4/SM2 加密后请求学校支付接口。",
+      "paramsSchema": {
+        "type": "object",
+        "required": [
+          "roomQuery",
+          "amount",
+          "payCode"
+        ],
+        "properties": {
+          "roomQuery": {
+            "type": "string",
+            "description": "宿舍号简写，例如 9#312",
+            "examples": [
+              "9#312"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "description": "充值金额，必须大于 0，最多两位小数，例如 30"
+          },
+          "payCode": {
+            "type": "string",
+            "description": "支付方式编码，来自 newcard.electricity.recharge.config 的 payMethods.code；余额支付为 06"
+          },
+          "tradeType": {
+            "type": "string",
+            "description": "支付交易类型；支付方式返回 tradeType 时传入"
+          },
+          "paymentPassword": {
+            "type": "string",
+            "description": "一卡通支付密码；payCode=06 且 needPaymentPassword=true 时必填"
+          },
+          "returnUrl": {
+            "type": "string",
+            "description": "支付宝/微信等 H5 支付完成后的跳转地址；余额支付通常不用"
+          },
+          "customfield": {
+            "type": "object",
+            "description": "学校电费配置要求的自定义字段；当前通常为空对象"
+          },
+          "raw": {
+            "type": "boolean",
+            "default": false,
+            "description": "是否返回学校接口原始 resultData"
+          }
+        }
+      },
+      "requestExample": {
+        "feature": "newcard.electricity.recharge.pay",
+        "params": {
+          "roomQuery": "9#312",
+          "amount": "30",
+          "payCode": "06",
+          "paymentPassword": "一卡通支付密码"
+        }
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "amount": "30",
+          "room": {
+            "query": "9#312",
+            "buildingName": "9号宿舍楼",
+            "levelName": "3层",
+            "roomName": "312房间"
+          },
+          "account": {
+            "utilityAccount": "电费账号",
+            "utilityUsername": "户名",
+            "utilityStatusName": "正常",
+            "accStatusName": "正常"
+          },
+          "payMethod": {
+            "code": "06",
+            "tradeType": null,
+            "name": "余额支付"
+          },
+          "partnerJourno": null,
+          "payResult": {
+            "type": "balance_payment",
+            "payCode": "06",
+            "partnerJourno": null
+          }
+        }
+      }
+    },
+    {
+      "name": "jw.schedule",
+      "title": "教务课表查询",
+      "system": "jw",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "查询当前或指定学期课表。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string",
+            "description": "学期，例如 2025-2026-2；不传使用教务默认当前学期"
+          }
+        }
+      },
+      "requestExample": {
+        "feature": "jw.schedule",
+        "params": {}
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "term": "当前学期",
+          "courses": [
+            {
+              "day": "星期一",
+              "slot": "第一大节",
+              "title": "课程名",
+              "teacher": "教师",
+              "weeks": "1-16周",
+              "sections": "1-2节",
+              "location": "教室"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "jw.profile",
+      "title": "教务个人信息",
+      "system": "jw",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "查询教务系统个人基础信息。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "requestExample": {
+        "feature": "jw.profile",
+        "params": {}
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "studentId": "学号",
+          "name": "姓名",
+          "college": "学院",
+          "major": "专业",
+          "className": "班级",
+          "grade": "年级",
+          "gender": "性别"
+        }
+      }
+    },
+    {
+      "name": "jw.grades",
+      "title": "教务成绩/学分绩点查询",
+      "system": "jw",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "查询成绩，并返回按课程去重后的学分绩点汇总、正常成绩、补考/重修成绩。会合并教务成绩表和毕业审核成绩表，部分最新成绩可能先以 source=graduationAudit 返回。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string",
+            "description": "按学期过滤，例如 2025-2026-2"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "best_by_course",
+              "raw"
+            ],
+            "default": "best_by_course",
+            "description": "summary 统计模式；默认同一课程取绩点/分数最高的一条"
+          }
+        }
+      },
+      "requestExample": {
+        "feature": "jw.grades",
+        "params": {}
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "mode": "best_by_course",
+          "summary": {
+            "courseCount": 42,
+            "totalCredits": 91.75,
+            "gpaCredits": 91.75,
+            "weightedGradePoint": 2.25,
+            "failedCourseCount": 3,
+            "failedCredits": 13
+          },
+          "rawSummary": {
+            "courseCount": 48,
+            "totalCredits": 112,
+            "gpaCredits": 112,
+            "weightedGradePoint": 1.85,
+            "failedCourseCount": 9,
+            "failedCredits": 33.25
+          },
+          "terms": [
+            {
+              "term": "2025-2026-2",
+              "courseCount": 8,
+              "totalCredits": 18,
+              "gpaCredits": 18,
+              "weightedGradePoint": 3.12,
+              "failedCourseCount": 0,
+              "failedCredits": 0
+            }
+          ],
+          "normalGrades": [
+            {
+              "term": "2025-2026-2",
+              "courseCode": "课程编号",
+              "courseName": "课程名称",
+              "score": "成绩",
+              "credit": "学分",
+              "gradePoint": "绩点",
+              "examNature": "正常考试",
+              "source": "gradeList"
+            }
+          ],
+          "makeupGrades": [
+            {
+              "term": "2023-2024-1",
+              "courseCode": "课程编号",
+              "courseName": "课程名称",
+              "score": "补考成绩",
+              "scoreFlag": "成绩标识",
+              "credit": "学分",
+              "gradePoint": "绩点",
+              "makeupTerm": "补重学期",
+              "examNature": "补考一",
+              "source": "gradeList"
+            }
+          ],
+          "failedCourses": [
+            {
+              "term": "2023-2024-1",
+              "courseCode": "课程编号",
+              "courseName": "课程名称",
+              "score": "成绩",
+              "credit": "学分",
+              "gradePoint": "绩点"
+            }
+          ],
+          "sourceSummary": {
+            "gradeListCount": 48,
+            "graduationAuditCount": 36,
+            "addedFromGraduationAuditCount": 3
+          }
+        }
+      }
+    },
+    {
+      "name": "jw.exams",
+      "title": "教务考试安排",
+      "system": "jw_mobile",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "通过移动教务 CAS SSO 查询考试安排。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "requestExample": {
+        "feature": "jw.exams",
+        "params": {}
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "exams": [
+            {
+              "courseName": "课程名称",
+              "teacher": "教师",
+              "examTime": "考试时间",
+              "examPlace": "考试地点",
+              "seatNo": "座位号",
+              "courseCode": "课程编号",
+              "examSession": "考试场次",
+              "campus": "校区"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "jw.training",
+      "title": "教务培养/毕业完成情况",
+      "system": "jw",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "查询教务培养或毕业完成情况；无数据时返回空数组。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "requestExample": {
+        "feature": "jw.training",
+        "params": {}
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "training": [
+            {
+              "graduationYear": "毕业届别",
+              "graduationType": "毕业类型",
+              "graduationConclusion": "毕业结论",
+              "graduationTime": "毕业时间",
+              "certificateNo": "毕业证书编号"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "newcard.balance",
+      "title": "校园卡余额",
+      "system": "newcard",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "查询校园卡账户余额。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "requestExample": {
+        "feature": "newcard.balance",
+        "params": {}
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "accounts": [
+            {
+              "typeCode": "账户类型编号",
+              "typeName": "账户名称",
+              "balance": "余额",
+              "unit": "元"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "newcard.transactions",
+      "title": "校园卡流水",
+      "system": "newcard",
+      "method": "POST",
+      "path": "/api/v1/run",
+      "description": "查询校园卡交易流水。",
+      "paramsSchema": {
+        "type": "object",
+        "properties": {
+          "fromDate": {
+            "type": "string",
+            "format": "date",
+            "description": "起始日期，不传默认最近 30 天"
+          },
+          "toDate": {
+            "type": "string",
+            "format": "date",
+            "description": "截止日期，不传默认今天"
+          },
+          "tradeType": {
+            "type": "string",
+            "default": "1,2,3",
+            "description": "交易类型，默认全部"
+          },
+          "pageNo": {
+            "type": "integer",
+            "default": 1,
+            "minimum": 0,
+            "description": "对外页码按 1 起算；内部自动转换成学校接口的 0 起始页码。传 0 也兼容为第一页。"
+          },
+          "pageSize": {
+            "type": "integer",
+            "default": 20,
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "requestExample": {
+        "feature": "newcard.transactions",
+        "params": {
+          "pageSize": 20
+        }
+      },
+      "responseExample": {
+        "ok": true,
+        "data": {
+          "fromDate": "2026-05-01",
+          "toDate": "2026-06-02",
+          "tradeType": "1,2,3",
+          "pageNo": 1,
+          "pageSize": 20,
+          "transactions": [
+            {
+              "date": "交易时间",
+              "summary": "摘要",
+              "merchantName": "商户",
+              "amount": "金额",
+              "isRefund": "是否退款",
+              "operation": false,
+              "journo": "流水号"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
