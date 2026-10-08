@@ -172,6 +172,7 @@ class TestApp {
     this.repository, {
     UiCampusRepository? campusRepository,
     this.theme,
+    this.widgetHost,
   })
     : campusRepository = campusRepository ?? UiCampusRepository();
 
@@ -181,6 +182,8 @@ class TestApp {
   /// In-memory appearance settings; see [pumpTestApp].
   final ThemeSettings? theme;
 
+  /// Home-screen widget sink; kept in memory instead of a real platform.
+  final WidgetHost? widgetHost;
   late CampusController campus;
   final webViews = FakeWebViews();
   final launchedUrls = <Uri>[];
@@ -192,6 +195,7 @@ class TestApp {
     createCampus: (auth) =>
         campus = CampusController(auth: auth, repository: campusRepository),
     themeSettings: theme,
+    widgetHost: widgetHost,
     webViewBuilder: webViews.build,
     launchExternal: (uri) async {
       launchedUrls.add(uri);
@@ -206,12 +210,14 @@ Future<TestApp> pumpTestApp(
   FakeAuthRepository? repository,
   UiCampusRepository? campusRepository,
   ThemeSettings? themeSettings,
+  WidgetHost? widgetHost,
   bool settle = true,
 }) async {
   final app = TestApp(
     repository ?? FakeAuthRepository(),
     campusRepository: campusRepository,
     theme: themeSettings,
+    widgetHost: widgetHost,
   );
   await tester.pumpWidget(app.build());
   if (settle) await tester.pumpAndSettle();

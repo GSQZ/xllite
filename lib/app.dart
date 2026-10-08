@@ -15,6 +15,7 @@ class XinliApp extends StatefulWidget {
     this.webViewBuilder = buildPlatformAuthWebView,
     this.launchExternal = launchExternalUrl,
     this.themeSettings,
+    this.widgetHost,
   });
 
   /// Called once by the root State. Tests inject a fake-backed controller.
@@ -28,6 +29,8 @@ class XinliApp extends StatefulWidget {
   /// Loaded before the first frame by main(); in-memory defaults otherwise.
   final ThemeSettings? themeSettings;
 
+  /// Home-screen widget sink; the real one by default, in-memory in tests.
+  final WidgetHost? widgetHost;
 
   @override
   State<XinliApp> createState() => _XinliAppState();
@@ -38,6 +41,11 @@ class _XinliAppState extends State<XinliApp> with WidgetsBindingObserver {
   late final CampusController _campus;
   late final ThemeSettings _theme =
       widget.themeSettings ?? ThemeSettings(MemoryThemeStore());
+  late final WidgetBridge _widgetBridge = WidgetBridge(
+    auth: _auth,
+    source: _campus.widgetSource,
+    host: widget.widgetHost ?? const PlatformWidgetHost(),
+  )..accent = _theme.skin.color.toARGB32();
 
   @override
   void initState() {
@@ -45,7 +53,9 @@ class _XinliAppState extends State<XinliApp> with WidgetsBindingObserver {
     _auth = widget.createController();
     _campus = widget.createCampus(_auth);
     WidgetsBinding.instance.addObserver(this);
+    _theme.addListener(_themeChanged);
     _auth.restore();
+    _widgetBridge.start();
   }
 
   @override
@@ -57,10 +67,15 @@ class _XinliAppState extends State<XinliApp> with WidgetsBindingObserver {
     if (resumed) _auth.refreshSession();
   }
 
+  void _themeChanged() {
+    _widgetBridge.accent = _theme.skin.color.toARGB32();
+  }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _theme.removeListener(_themeChanged);
+    _widgetBridge.dispose();
     _campus.dispose();
     _auth.dispose();
     super.dispose();

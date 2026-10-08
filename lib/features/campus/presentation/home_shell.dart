@@ -8,6 +8,7 @@ import 'package:xinli_lite/features/campus/campus.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/frosted.dart';
 import '../../../shared/widgets/motion.dart';
+import '../../../shared/widgets/widget_entry_route.dart';
 import 'coming_soon_page.dart';
 import 'home_tab.dart';
 import 'mine_tab.dart';
@@ -58,8 +59,16 @@ class _HomeShellState extends State<HomeShell>
       _campus.restorePreferences();
       _syncActive();
     });
+    WidgetEntryRoute.listen(_takeWidgetRoute);
+    _takeWidgetRoute();
   }
 
+  void _takeWidgetRoute() {
+    WidgetEntryRoute.take().then((route) {
+      if (!mounted || route == null) return;
+      if (route == 'schedule') _selectTab(1);
+    });
+  }
 
   @override
   void didChangeDependencies() {
@@ -76,6 +85,7 @@ class _HomeShellState extends State<HomeShell>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _foreground = state == AppLifecycleState.resumed;
+    if (_foreground) _takeWidgetRoute();
     if (_foreground && widget.auth.state.isAuthenticated) {
       _campus.home.load();
       _campus.loadBalance();
@@ -87,6 +97,7 @@ class _HomeShellState extends State<HomeShell>
 
   @override
   void dispose() {
+    WidgetEntryRoute.onAvailable = null;
     WidgetsBinding.instance.removeObserver(this);
     _campus.home.setActive(false);
     _entrance.dispose();

@@ -12,6 +12,7 @@ export 'application/campus_code_controller.dart';
 export 'application/home_controller.dart';
 export 'application/payment_controller.dart';
 export 'application/resource_controller.dart';
+export 'application/widget_bridge.dart';
 export 'application/transactions_controller.dart';
 export 'domain/academic_models.dart';
 export 'domain/campus_failure.dart';
@@ -20,6 +21,7 @@ export 'domain/campus_local_data.dart';
 export 'domain/card_models.dart';
 export 'domain/records.dart';
 export 'domain/schedule_planner.dart';
+export 'domain/widget_snapshot.dart';
 
 /// Create once next to AuthController; dispose this before disposing auth.
 CampusController createCampusController(AuthController auth) {
