@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The home screen's course card, shrunk to a widget: the same pill, the same
+  big title, the same meta line of value pairs. The timed countdown sits at
+  the right of the pill's row, so the room never gets squeezed.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_card_light"
+    android:paddingStart="18dp"
+    android:paddingEnd="18dp"
+    android:paddingTop="15dp"
+    android:paddingBottom="15dp">
+
+    <!-- Row 1: the pill, then the countdown hard right. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:id="@+id/widget_pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/widget_pill"
+            android:paddingStart="10dp"
+            android:paddingEnd="11dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp">
+
+            <View
+                android:id="@+id/widget_pill_dot"
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/widget_pill_dot" />
+
+            <TextView
+                android:id="@+id/widget_pill_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:includeFontPadding="false"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#1D6FD8"
+                android:text="下一节" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="1dp" />
+
+        <TextView
+            android:id="@+id/widget_trailing"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:includeFontPadding="false"
+            android:layout_marginStart="8dp"
+            android:textSize="12.5sp"
+            android:textStyle="bold"
+            android:textColor="#6B7280"
+            android:text="还有 23 分钟" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:layout_marginTop="9dp"
+        android:textSize="21sp"
+        android:textStyle="bold"
+        android:textColor="#14161B"
+        android:text="Oracle 数据库应用技术" />
+
+    <!-- Row 3: value pairs, middot-separated (RemoteViews has no glyph row). -->
+    <TextView
+        android:id="@+id/widget_meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:layout_marginTop="8dp"
+        android:textSize="12.5sp"
+        android:textColor="#6B7280"
+        android:text="10:00–11:40 · 王老师" />
+
+    <!-- The room, on its own line at the bottom, and never truncated. -->
+    <TextView
+        android:id="@+id/widget_room"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:layout_marginTop="6dp"
+        android:textSize="13sp"
+        android:textColor="#6B7280"
+        android:text="10号实验楼 · 软件开发实验室 · 101" />
+
+    <ImageView
+        android:id="@+id/widget_progress_track"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginTop="10dp"
+        android:scaleType="fitXY"
+        android:contentDescription="@string/widget_class_progress"
+        android:visibility="gone" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_empty_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#14161B"
+            android:text="课表还没同步" />
+
+        <TextView
+            android:id="@+id/widget_empty_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:layout_marginTop="5dp"
+            android:textSize="12.5sp"
+            android:textColor="#6B7280"
+            android:text="打开新理Lite 看一眼课表" />
+    </LinearLayout>
+</LinearLayout>
