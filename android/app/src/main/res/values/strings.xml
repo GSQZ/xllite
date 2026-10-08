@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">新理Lite</string>
-    <string name="widget_class_description">在桌面上显示正在上的课和下一节课</string>
-    <string name="widget_class_progress">课程进度</string>
-</resources>

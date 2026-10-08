@@ -1,114 +1,60 @@
 # 新理Lite
 
-面向新疆理工学院学生的轻量校园服务 App，使用 Flutter 开发，支持 Android 和 iOS。
+新理Lite 是面向新疆理工学院学生的民间校园服务 App，定位为「掌上新理工」的轻量替代方案。项目计划覆盖 Android 和 iOS，使用 Flutter 统一开发。
 
-> 本项目为民间开发，不代表新疆理工学院官方应用。
+> 新理Lite 是民间开发版本，不代表新疆理工学院官方应用。
 
-## 项目状态
+## 截图
 
-**1.0.0 正式版正在从零重建。**
+| 首页 | 课表 | 校园卡 |
+| --- | --- | --- |
+| <img src="./docs/assets/screenshots/home.png" width="220" alt="首页"> | <img src="./docs/assets/screenshots/schedule.png" width="220" alt="课表"> | <img src="./docs/assets/screenshots/card.png" width="220" alt="校园卡"> |
 
-`v1.0.0` 分支基于重新初始化的 Flutter 工程开发。旧版实现可通过 Git 历史查阅。当前已接入原生登录、首页、课表、成绩、考试、校园卡及宿舍电费页面。
+| 宿舍电费 | 成绩 | 考试安排 |
+| --- | --- | --- |
+| <img src="./docs/assets/screenshots/electricity.png" width="220" alt="宿舍电费"> | <img src="./docs/assets/screenshots/grades.png" width="220" alt="成绩"> | <img src="./docs/assets/screenshots/exams.png" width="220" alt="考试安排"> |
 
-认证支持密码登录、微信扫码、Token 恢复与续期、安全存储和退出。校园业务层覆盖个人信息、课表、成绩、考试、毕业情况、校园卡余额与流水、付款码、校园卡充值以及宿舍电费查询和支付，共 13 个公开业务接口。
+## 技术方向
 
-查询支持按账号隔离的持久化缓存、后台刷新、异常处理和分页；宿舍查询成功后自动记忆，下次启动恢复。一卡通及电费充值包含配置、确认、学校收银台、外部支付跳转和结果核对；未核对充值标记跨重启保留。后端已按官方校历配置 2026–2027 两个学期与确认的作息，App 自动计算教学周与课程时间。外部支付实际到账仍需真实付款验证，自动测试不扣款。详见 [缓存与充值说明](docs/cache-and-recharge.md)。
+- Framework: Flutter
+- Language: Dart
+- Platforms: Android, iOS only
+- State management: Riverpod
+- Routing: go_router
+- Network: dio
+- Local secure storage: flutter_secure_storage
 
-状态、调用方式和协作边界见 [登录 UI 对接文档](docs/auth-ui-handoff.md) 与 [校园业务 UI 对接文档](docs/campus-ui-handoff.md)。
+## 版本
 
-`pubspec.yaml` 中的 `1.0.0+1` 是重建工程的起始版本号，不代表正式版已经发布。
+当前版本：`0.1.2+3`
 
-## 开发环境
+## 构建产物
 
-当前工程使用以下开发工具版本：
+推送 `v*` tag 后，GitHub Actions 会自动构建：
 
-| 工具 | 版本 |
-| --- | --- |
-| Flutter | 3.44.4 stable |
-| Dart | 3.12.2 |
+- Android release APK
+- iOS unsigned IPA，用于爱思助手、AltStore、SideStore 等自签工具重新签名安装
 
-- Android 开发需要 Android SDK 和兼容的 JDK，当前工程使用 Java 17 编译目标。
-- iOS 开发需要 macOS、Xcode 及对应的模拟器或真机环境。
-- 认证层使用 Dio 请求接口、`flutter_secure_storage` 保存会话、Flutter 自带 `ChangeNotifier` 通知页面状态。
+手动构建也可以在 GitHub Actions 里运行 `Build Release Artifacts`。
 
-环境安装可参考 [Flutter 官方文档](https://docs.flutter.dev/get-started/install)。
+## 文档
 
-## 本地运行
+- [产品定位](./docs/product.md)
+- [Flutter 开发文档](./docs/flutter-development.md)
+- [接口接入文档](./docs/api.md)
+- [开发路线](./docs/roadmap.md)
 
-在项目根目录执行：
+## 本机环境
 
-```bash
-flutter doctor
-flutter pub get
-flutter devices
-flutter run
-```
-
-连接多台设备时，使用 `flutter run -d <device-id>` 指定目标设备。
-
-## 开发检查
-
-```bash
-dart format lib test
-flutter analyze
-flutter test
-```
-
-测试覆盖认证与校园接口契约、状态切换、续期、退出竞争、页面交互、课表时间推导、流水分页、付款码失效和支付防重。接口测试使用公开文档示例和模拟响应，不调用真实账号或执行真实扣款。
-
-## 项目结构
+当前工作机已确认：
 
 ```text
-lib/
-  main.dart           # 应用入口
-  app.dart            # 根节点、认证生命周期与主题
-  features/auth/
-    auth.dart         # 页面调用的统一入口
-    application/      # 认证状态控制器
-    data/             # HTTP 接口与安全存储
-    domain/           # 模型与仓库契约
-    presentation/     # 登录与认证页面
-  features/campus/
-    campus.dart       # 校园业务统一入口
-    application/      # 首页、查询、分页、付款码与支付状态
-    data/             # 统一业务请求与仓库实现
-    domain/           # 业务模型、仓库契约与课表计算
-    presentation/     # 校园页面、充值表单与学校收银台
-  shared/             # 主题及通用组件
-test/
-  features/auth/      # 认证业务测试
-  features/campus/    # 校园业务测试及公开接口示例
-  presentation/       # 页面交互测试
-  widget_test.dart    # 应用入口测试
-docs/
-  auth-ui-handoff.md  # 登录 UI 对接约定
-  campus-ui-handoff.md # 校园业务与页面接入说明
-android/              # Android 平台工程
-ios/                  # iOS 平台工程
-pubspec.yaml          # 版本与依赖声明
-analysis_options.yaml # 静态分析规则
-LICENSE               # 开源许可证
+Flutter 3.41.7
+Dart 3.11.5
 ```
 
-## 构建
+Flutter 工程名为 `xinli_lite`，应用展示名为「新理Lite」。
 
-```bash
-# Android APK
-flutter build apk --release
+## License
 
-# iOS 应用，仅限 macOS，不包含代码签名
-flutter build ios --release --no-codesign
-```
-
-当前使用模板构建配置：Android release 构建仍采用 debug 签名，iOS 上述命令生成未签名应用。正式分发前需要重新配置发布签名与发布流程；旧版自动发布工作流已移除。
-
-应用标识保持不变：
-
-| 平台 | 标识 |
-| --- | --- |
-| Android applicationId | `com.sayqz.xinli_lite` |
-| iOS Bundle ID | `com.sayqz.xinliLite` |
-
-## 许可证
-
-本项目采用 [GNU Affero General Public License v3.0](LICENSE) 授权。
+本项目使用 [GNU Affero General Public License v3.0](./LICENSE) 授权。
