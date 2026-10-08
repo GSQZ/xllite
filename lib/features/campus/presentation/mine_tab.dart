@@ -9,6 +9,7 @@ import '../../../shared/widgets/motion.dart';
 import 'section_parts.dart';
 import 'theme_sheet.dart';
 import 'signed_in_memo.dart';
+import 'course_activity_test_row.dart';
 
 class MineTab extends StatefulWidget {
   const MineTab({
@@ -30,6 +31,7 @@ class _MineTabState extends State<MineTab> {
   late final Listenable _listenable = Listenable.merge([
     widget.auth,
     widget.campus.profile,
+    widget.campus.courseActivities,
   ]);
   final _memo = SignedInMemo<ResourceState<StudentProfile>>();
 
@@ -156,6 +158,8 @@ class _MineTabState extends State<MineTab> {
                       label: '关于新理Lite',
                       onTap: _showAbout,
                     ),
+                    if (widget.campus.courseActivities.canTest)
+                      CourseActivityTestRow(controller: widget.campus.courseActivities),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xxl),

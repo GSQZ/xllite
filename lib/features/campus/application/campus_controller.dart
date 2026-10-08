@@ -12,6 +12,7 @@ import 'payment_controller.dart';
 import 'resource_controller.dart';
 import 'transactions_controller.dart';
 import 'widget_bridge.dart';
+import 'course_activity_controller.dart';
 
 /// App-owned business services. Construction never sends a request. Screens
 /// subscribe to individual resources and load explicitly, outside build().
@@ -23,6 +24,7 @@ class CampusController {
   }) {
     home = HomeController(repository, profile: profile, exams: exams);
     widgetSource = CampusWidgetSource(this);
+    courseActivities = CourseActivityController(auth: auth, source: widgetSource);
     transactions = TransactionsController(repository);
     payments = PaymentController(repository);
     campusCode = CampusCodeController(repository);
@@ -65,6 +67,7 @@ class CampusController {
 
   /// The home-screen widget reads the timetable through this.
   late final CampusWidgetSource widgetSource;
+  late final CourseActivityController courseActivities;
   late final TransactionsController transactions;
   late final PaymentController payments;
   late final CampusCodeController campusCode;
@@ -219,6 +222,7 @@ class CampusController {
     if (_disposed) return;
     _disposed = true;
     auth.removeListener(_authChanged);
+    courseActivities.dispose();
     widgetSource.dispose();
     home.dispose();
     for (final resource in [

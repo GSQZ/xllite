@@ -55,6 +55,9 @@ struct ClassTimelineProvider: TimelineProvider {
 struct ClassWidgetBundle: WidgetBundle {
   var body: some Widget {
     ClassWidget()
+    if #available(iOSApplicationExtension 16.2, *) {
+      CourseLiveActivity()
+    }
   }
 }
 

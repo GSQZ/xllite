@@ -52,6 +52,7 @@ class _XinliAppState extends State<XinliApp> with WidgetsBindingObserver {
     super.initState();
     _auth = widget.createController();
     _campus = widget.createCampus(_auth);
+    _campus.courseActivities.accent = _theme.skin.color.toARGB32();
     WidgetsBinding.instance.addObserver(this);
     _theme.addListener(_themeChanged);
     _auth.restore();
@@ -64,11 +65,13 @@ class _XinliAppState extends State<XinliApp> with WidgetsBindingObserver {
     // The payment code drops its credential whenever the app leaves the
     // foreground; the controller decides whether a token needs renewing.
     _campus.campusCode.setForeground(resumed);
+    _campus.courseActivities.setForeground(resumed);
     if (resumed) _auth.refreshSession();
   }
 
   void _themeChanged() {
     _widgetBridge.accent = _theme.skin.color.toARGB32();
+    _campus.courseActivities.accent = _theme.skin.color.toARGB32();
   }
 
   @override
