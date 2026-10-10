@@ -1,14 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:xinli_lite/features/auth/auth.dart';
 import 'package:xinli_lite/features/campus/campus.dart';
-import 'package:xinli_lite/features/campus/application/course_activity_controller.dart';
 import 'package:xinli_lite/features/campus/domain/course_reminder_plan.dart';
-
-import '../../support/fakes.dart';
 
 AcademicCalendar calendar({List<CalendarDateOverride> overrides = const []}) =>
     AcademicCalendar(
@@ -38,20 +31,6 @@ class Source extends ChangeNotifier implements WidgetScheduleSource {
   AcademicCalendar? widgetCalendar = calendar();
   @override
   Schedule? widgetSchedule = Schedule(term: '2026-2027-1', courses: [course]);
-}
-
-class Host implements CourseActivityHost {
-  final calls = <String>[];
-  Future<Map<String, dynamic>> Function(String)? respond;
-  @override
-  Future<Map<String, dynamic>> invoke(
-    String method,
-    Map<String, Object?> args,
-  ) async {
-    calls.add(method);
-    return await respond?.call(method) ??
-        {'testing': method == 'startTest', 'phase': 'pending'};
-  }
 }
 
 void main() {
@@ -163,109 +142,6 @@ void main() {
         ),
         isEmpty,
       );
-    },
-  );
-
-  for (final username in ['20230001', '202303310112']) {
-    test('test entry and business authorization for $username', () async {
-      final auth = AuthController(
-        repository: FakeAuthRepository(stored: testSession(username: username)),
-      );
-      final source = Source();
-      final host = Host();
-      final controller = CourseActivityController(
-        auth: auth,
-        source: source,
-        host: host,
-        supportedPlatform: true,
-      );
-      await auth.restore();
-      await controller.setTesting(true);
-      expect(
-        controller.canTest,
-        username == CourseActivityController.testerUsername,
-      );
-      expect(
-        host.calls.contains('startTest'),
-        username == CourseActivityController.testerUsername,
-      );
-      controller.dispose();
-      source.dispose();
-      auth.dispose();
-    });
-  }
-
-  test(
-    'logout serializes cleanup after an in-flight start; late result cannot turn switch on',
-    () async {
-      final auth = AuthController(
-        repository: FakeAuthRepository(
-          stored: testSession(username: '202303310112'),
-        ),
-      );
-      await auth.restore();
-      final source = Source();
-      final host = Host();
-      final started = Completer<void>();
-      final response = Completer<Map<String, dynamic>>();
-      host.respond = (method) async {
-        if (method == 'startTest') {
-          started.complete();
-          return response.future;
-        }
-        return {'testing': false};
-      };
-      final controller = CourseActivityController(
-        auth: auth,
-        source: source,
-        host: host,
-        supportedPlatform: true,
-      );
-      final start = controller.setTesting(true);
-      await started.future;
-      await auth.signOut();
-      response.complete({'testing': true});
-      await start;
-      await Future<void>.delayed(Duration.zero);
-      expect(host.calls.last, 'session');
-      expect(controller.testing, isFalse);
-      expect(controller.canTest, isFalse);
-      controller.dispose();
-      source.dispose();
-      auth.dispose();
-    },
-  );
-
-  test(
-    'native permission errors are visible and do not leave switch on or busy',
-    () async {
-      final auth = AuthController(
-        repository: FakeAuthRepository(
-          stored: testSession(username: '202303310112'),
-        ),
-      );
-      await auth.restore();
-      final source = Source();
-      final host = Host()
-        ..respond = (method) async {
-          if (method == 'startTest') {
-            throw PlatformException(code: 'disabled', message: '请允许实时活动');
-          }
-          return {'testing': false};
-        };
-      final controller = CourseActivityController(
-        auth: auth,
-        source: source,
-        host: host,
-        supportedPlatform: true,
-      );
-      await controller.setTesting(true);
-      expect(controller.error, '请允许实时活动');
-      expect(controller.testing, isFalse);
-      expect(controller.busy, isFalse);
-      controller.dispose();
-      source.dispose();
-      auth.dispose();
     },
   );
 }

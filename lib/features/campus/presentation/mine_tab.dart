@@ -9,7 +9,7 @@ import '../../../shared/widgets/motion.dart';
 import 'section_parts.dart';
 import 'theme_sheet.dart';
 import 'signed_in_memo.dart';
-import 'course_activity_test_row.dart';
+import 'course_reminder_sheet.dart';
 
 class MineTab extends StatefulWidget {
   const MineTab({
@@ -153,13 +153,21 @@ class _MineTabState extends State<MineTab> {
                       trailing: const ThemeSummary(),
                       onTap: () => showThemeSheet(context),
                     ),
+                    if (widget.campus.courseActivities.supportedPlatform)
+                      _LinkRow(
+                        key: const Key('mine.courseReminders'),
+                        icon: Icons.notifications_active_outlined,
+                        label: '课前提醒',
+                        onTap: () => showCourseReminderSheet(
+                          context,
+                          campus: widget.campus,
+                        ),
+                      ),
                     _LinkRow(
                       icon: Icons.info_outline_rounded,
                       label: '关于新理Lite',
                       onTap: _showAbout,
                     ),
-                    if (widget.campus.courseActivities.canTest)
-                      CourseActivityTestRow(controller: widget.campus.courseActivities),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xxl),

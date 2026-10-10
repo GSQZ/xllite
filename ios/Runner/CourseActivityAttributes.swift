@@ -15,4 +15,5 @@ struct CourseActivityAttributes: ActivityAttributes {
   var startsAt: Date
   var dismissAt: Date
   var isTest: Bool
+  var accountScope: String? = nil
 }

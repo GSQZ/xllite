@@ -4,6 +4,9 @@ import UIKit
 class SceneDelegate: FlutterSceneDelegate {
   override func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
     capture(connectionOptions.urlContexts)
+    if connectionOptions.notificationResponse?.notification.request.content.userInfo["xinliRoute"] as? String == "schedule" {
+      AppDelegate.pendingRoute = "schedule"
+    }
     super.scene(scene, willConnectTo: session, options: connectionOptions)
   }
 

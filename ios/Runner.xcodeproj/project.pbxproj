@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F09C63DAB940EE14BD101101 /* CourseReminderSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09C63DAB940EE14BD101102 /* CourseReminderSchedule.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		1971C9C403A8295FB75D3439 /* CourseActivityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40500EE526F90EEBEB9290C9 /* CourseActivityService.swift */; };
 		2A00F4AE5C76D05CC2A8BB71 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3CAD6D8B8FCCB430DD9E329B /* Pods_Runner.framework */; };
@@ -70,6 +71,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F09C63DAB940EE14BD101102 /* CourseReminderSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseReminderSchedule.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		1B42A4B606CE2D07E8EB7016 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
@@ -208,6 +210,7 @@
 				660FA2BBFCA9CA1D197065C6 /* WidgetSnapshotStore.swift */,
 				B7445DDFF500E872468A927C /* CourseActivityAttributes.swift */,
 				40500EE526F90EEBEB9290C9 /* CourseActivityService.swift */,
+				F09C63DAB940EE14BD101102 /* CourseReminderSchedule.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -506,6 +509,7 @@
 				BB3B63B704A3C5AA28AE386C /* WidgetSnapshotStore.swift in Sources */,
 				FE710E2AC98AE3889E00485A /* CourseActivityAttributes.swift in Sources */,
 				1971C9C403A8295FB75D3439 /* CourseActivityService.swift in Sources */,
+				F09C63DAB940EE14BD101101 /* CourseReminderSchedule.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

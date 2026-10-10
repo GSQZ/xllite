@@ -78,7 +78,7 @@ abstract interface class WidgetScheduleSource implements Listenable {
 class CampusWidgetSource extends ChangeNotifier
     implements WidgetScheduleSource {
   CampusWidgetSource(this._campus) {
-    _campus.home.schedule.addListener(notifyListeners);
+    _campus.home.addListener(notifyListeners);
   }
 
   final CampusController _campus;
@@ -94,7 +94,7 @@ class CampusWidgetSource extends ChangeNotifier
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _campus.home.schedule.removeListener(notifyListeners);
+    _campus.home.removeListener(notifyListeners);
     super.dispose();
   }
 }
