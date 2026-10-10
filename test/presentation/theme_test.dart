@@ -141,7 +141,6 @@ void main() {
     await tester.tap(find.text('跟随系统'));
     await tester.pumpAndSettle();
     expect(_app(tester).themeMode, ThemeMode.system);
-    await Future<void>.delayed(Duration.zero);
     expect(store.value, '{"skin":"campusBlue","mode":"system"}');
     expect(tester.takeException(), isNull);
   });
