@@ -580,16 +580,17 @@
 - 两个独立信号任一成立即判定到账：主账户余额增加 ≥ 充值金额；或出现一笔充值前没有的、金额相同的新流水。
 - 轮询：前 2 分钟每 3 秒，之后每 8 秒，10 分钟后停止。等待页实时显示"当前余额"，并始终提供"已到账"（手动确认、解除锁定）与"稍后再看"。
 
-### 11.20 主题皮肤（主题与外观）
+### 11.20 主题与外观（皮肤 + 明暗模式）
 
 - 入口："我的 → 主题与外观"（右侧始终贴着箭头显示当前皮肤名和色点，`Expanded` 标签吃掉空白，右侧内容就不会飘到中间）。
 - 十款皮肤，每款一个色 + 一层背景氛围色：校园蓝（默认）、湖青、松绿、暮紫、胭脂、赭橙、咖啡、石墨、墨黑、素白。
-- **不提供浅色 / 深色开关**：外观跟随系统（设置里的 `themeMode` 保留为 `system`，随时可以加回开关）。
-- 弹层结构：毛玻璃顶部弹层 → 标题"主题皮肤" → 皮肤预览卡 → 色板 → 说明 → "恢复默认皮肤"。
+- 明暗模式：**跟随系统 / 浅色 / 深色** 三选一，默认跟随系统。使用与课表视图共用的 `AppSegmented`，与色板同属一个弹层。
+- 弹层结构：毛玻璃顶部弹层 → 标题"主题与外观" → 皮肤预览卡 → 色板 → "外观"分段控件 → 说明 → "恢复默认皮肤"。
 - 预览卡是一次真实绘制：固定设计尺寸 340 × 156，用 `FittedBox(BoxFit.contain)` 缩放到弹层宽度，并把文字缩放钳制为 1，因此 2 倍字体下形状也完全一致。卡内展示背景氛围、一个余额数字、两枚胶囊标签和两个按钮——**所有胶囊与按钮同为 26pt 高、14pt 内边距**，两行对齐。
 - 色板：3 列自适应 `Wrap`，每格 46pt 圆点 + 选中描边与光晕 + 勾选（`AnimatedScale` + `AppMotion.pop`），下方是皮肤名。选中即生效，`HapticFeedback.selectionClick`。
 - 皮肤同时驱动：Material 配色（种子色，浅色下主色即种子色）、首页 / 登录页背景氛围色、首页屏幕小组件的强调色。切换时 `MaterialApp` 用 `AppMotion.long` + `emphasized` 交叉淡入。
-- 持久化：`flutter_secure_storage` 的 `xinli.theme.v1`，只存 `{"skin":"...","mode":"..."}`；读失败、解析失败、未知名称一律回落到校园蓝 + 跟随系统，绝不阻塞启动。启动在 `runApp` 之前读取，因此不会先闪一下默认色。
+- 预览卡按当前 `brightness` 取色：跟随系统或固定深色时，预览也随之呈现深色配色。
+- 持久化：`flutter_secure_storage` 的 `xinli.theme.v1`，存 `{"skin":"...","mode":"..."}`，皮肤与模式一起读写；读失败、解析失败、未知名称一律回落到校园蓝 + 跟随系统，绝不阻塞启动。启动在 `runApp` 之前读取，因此不会先闪一下默认色。
 
 ### 11.21 桌面小组件（课表）
 
@@ -641,7 +642,7 @@
 | 顶部弹层 | `lib/shared/widgets/top_sheet.dart` |
 | 二维码绘制（依赖 `qr`，只做编码） | `lib/features/campus/presentation/qr_view.dart` |
 | 皮肤定义（色 + 背景氛围色） | `lib/shared/theme/theme_skin.dart` |
-| 皮肤设置与持久化 | `lib/shared/theme/theme_settings.dart` |
+| 皮肤 / 明暗模式设置与持久化 | `lib/shared/theme/theme_settings.dart` |
 | 主题与外观弹层 | `lib/features/campus/presentation/theme_sheet.dart` |
 | 分段控件（外观 / 课表视图共用） | `lib/shared/widgets/segmented.dart` |
 | 小组件快照与计算 | `lib/features/campus/domain/widget_snapshot.dart` |

@@ -56,7 +56,8 @@ class ThemeSettings extends ChangeNotifier {
   /// The chosen skin.
   ThemeSkin skin;
 
-  /// Light or dark. There is no in-app switch: the app follows the system.
+  /// Following the system, or pinned to light / dark by the appearance
+  /// switch in 「我的 → 主题与外观」.
   ThemeMode mode;
 
   /// Reads the saved choice; anything missing or unreadable falls back to
@@ -93,7 +94,7 @@ class ThemeSettings extends ChangeNotifier {
       .write(jsonEncode({'skin': skin.name, 'mode': mode.name}))
       .catchError((Object _) {});
 
-  /// Kept for a future 跟随系统 / 浅色 / 深色 switch; nothing calls it yet.
+  /// 跟随系统 / 浅色 / 深色. Saved next to the skin, so both survive a restart.
   void setMode(ThemeMode value) {
     if (value == mode) return;
     mode = value;

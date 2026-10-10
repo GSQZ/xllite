@@ -5,6 +5,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/theme/theme_settings.dart';
 import '../../../shared/widgets/frosted.dart';
 import '../../../shared/widgets/motion.dart';
+import '../../../shared/widgets/segmented.dart';
 import '../../../shared/widgets/top_sheet.dart';
 import 'section_parts.dart';
 
@@ -32,7 +33,7 @@ class ThemeSheet extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SheetHeader(title: '主题皮肤'),
+          const SheetHeader(title: '主题与外观'),
           const SizedBox(height: AppSpacing.md),
           const SkinPreview(),
           const SizedBox(height: AppSpacing.lg),
@@ -54,6 +55,8 @@ class ThemeSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
+          const _AppearanceModeField(),
+          const SizedBox(height: AppSpacing.lg),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -66,7 +69,7 @@ class ThemeSheet extends StatelessWidget {
               Expanded(
                 child: Text(
                   '皮肤会同时套用到首页底色、按钮、选中状态和图标。'
-                  '深色模式跟随系统，无需另行设置。',
+                  '外观默认为跟随系统，也可固定为浅色或深色。',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -98,6 +101,47 @@ class ThemeSheet extends StatelessWidget {
 /// scaled to the sheet's width, so it looks the same on every phone.
 const double _previewWidth = 340;
 const double _previewHeight = 156;
+
+/// Follow the system, or pin the app to light / dark.
+///
+/// The choice lives in the same [ThemeSettings] as the skin, so both are
+/// restored together on the next launch.
+class _AppearanceModeField extends StatelessWidget {
+  const _AppearanceModeField();
+
+  static const List<String> _labels = ['跟随系统', '浅色', '深色'];
+  static const List<ThemeMode> _modes = [
+    ThemeMode.system,
+    ThemeMode.light,
+    ThemeMode.dark,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final settings = ThemeScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: Text('外观', style: theme.textTheme.titleSmall),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        AppSegmented(
+          key: const Key('theme.mode'),
+          labels: _labels,
+          index: _modes.indexOf(settings.mode),
+          onChanged: (index) {
+            if (_modes[index] == settings.mode) return;
+            HapticFeedback.selectionClick();
+            settings.setMode(_modes[index]);
+          },
+        ),
+      ],
+    );
+  }
+}
 
 /// A miniature of the app in the current skin — wash, figure, buttons —
 /// so the choice is judged the way it will actually look.

@@ -108,9 +108,42 @@ void main() {
         reason: skin.name,
       );
     }
-    // The mode switch stays out of the UI.
-    expect(find.text('跟随系统'), findsNothing);
-    expect(find.text('深色'), findsNothing);
+    // The mode switch sits under the colour palette.
+    expect(find.byKey(const Key('theme.mode')), findsOneWidget);
+    for (final label in ['跟随系统', '浅色', '深色']) {
+      expect(find.text(label), findsOneWidget);
+    }
+  });
+
+  testWidgets('picking an appearance mode applies and persists', (
+    tester,
+  ) async {
+    final store = MemoryThemeStore();
+    final theme = ThemeSettings(store);
+    await _signedIn(tester, theme: theme);
+    await _openSheet(tester);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('theme.mode')),
+      160,
+      scrollable: pageScrollable,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('深色'));
+    await tester.pumpAndSettle();
+    expect(theme.mode, ThemeMode.dark);
+    expect(_app(tester).themeMode, ThemeMode.dark);
+
+    await tester.tap(find.text('浅色'));
+    await tester.pumpAndSettle();
+    expect(_app(tester).themeMode, ThemeMode.light);
+
+    await tester.tap(find.text('跟随系统'));
+    await tester.pumpAndSettle();
+    expect(_app(tester).themeMode, ThemeMode.system);
+    await Future<void>.delayed(Duration.zero);
+    expect(store.value, '{"skin":"campusBlue","mode":"system"}');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('picking a skin repaints the app and persists', (tester) async {
