@@ -35,7 +35,9 @@
             android:paddingTop="5dp"
             android:paddingBottom="5dp">
 
-            <View
+            <!-- RemoteViews only inflates an allowlisted set of classes; a
+                 bare <View> makes the launcher reject the whole layout. -->
+            <TextView
                 android:id="@+id/widget_pill_dot"
                 android:layout_width="6dp"
                 android:layout_height="6dp"
@@ -54,16 +56,14 @@
                 android:text="下一节" />
         </LinearLayout>
 
-        <View
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="1dp" />
-
         <TextView
             android:id="@+id/widget_trailing"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
             android:maxLines="1"
+            android:ellipsize="end"
             android:includeFontPadding="false"
             android:layout_marginStart="8dp"
             android:textSize="12.5sp"
