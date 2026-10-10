@@ -24,7 +24,10 @@ class CampusController {
   }) {
     home = HomeController(repository, profile: profile, exams: exams);
     widgetSource = CampusWidgetSource(this);
-    courseActivities = CourseActivityController(auth: auth, source: widgetSource);
+    courseActivities = CourseActivityController(
+      auth: auth,
+      source: widgetSource,
+    );
     transactions = TransactionsController(repository);
     payments = PaymentController(repository);
     campusCode = CampusCodeController(repository);

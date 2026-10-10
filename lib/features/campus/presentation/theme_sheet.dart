@@ -357,7 +357,9 @@ class SkinSwatch extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+                    color: selected
+                        ? scheme.onSurface
+                        : scheme.onSurfaceVariant,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),

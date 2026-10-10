@@ -29,10 +29,7 @@ void main() {
 
     test('a building with no room keeps its name', () {
       expect(WidgetSnapshotBuilder.widgetWhere('【10号实验楼】'), '10号实验楼');
-      expect(
-        WidgetSnapshotBuilder.widgetWhere('【10号实验楼】实验室'),
-        '10号实验楼 · 实验室',
-      );
+      expect(WidgetSnapshotBuilder.widgetWhere('【10号实验楼】实验室'), '10号实验楼 · 实验室');
     });
 
     test('sheds the middle when the line would not fit', () {

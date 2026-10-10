@@ -38,8 +38,15 @@ Schedule _todaySchedule() {
 }
 
 /// 一 / 二 / … for today, so the fixture lands on the right weekday.
-final String _todayWeekdayName = const ['一', '二', '三', '四', '五', '六', '日'][
-    campusNow(DateTime.now()).weekday - 1];
+final String _todayWeekdayName = const [
+  '一',
+  '二',
+  '三',
+  '四',
+  '五',
+  '六',
+  '日',
+][campusNow(DateTime.now()).weekday - 1];
 
 /// [hour]:[minute] campus time today, as a local instant.
 DateTime at(int hour, int minute) {
@@ -272,7 +279,7 @@ void main() {
         final history = app.campus.loadSchedule(term: '2019-2020-1');
         await tester.pumpAndSettle();
         await history;
-      expect(app.campus.widgetSource.widgetSchedule, same(homeSchedule));
+        expect(app.campus.widgetSource.widgetSchedule, same(homeSchedule));
         await signOutFromMine(tester);
         final count = host.synced.length;
         await tester.pump(const Duration(minutes: 2));

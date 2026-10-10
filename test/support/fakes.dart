@@ -173,8 +173,7 @@ class TestApp {
     UiCampusRepository? campusRepository,
     this.theme,
     this.widgetHost,
-  })
-    : campusRepository = campusRepository ?? UiCampusRepository();
+  }) : campusRepository = campusRepository ?? UiCampusRepository();
 
   final FakeAuthRepository repository;
   final UiCampusRepository campusRepository;

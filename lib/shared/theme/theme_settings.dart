@@ -45,7 +45,11 @@ class MemoryThemeStore implements ThemeStore {
 /// Changes apply at once and are saved in the background; a failed save
 /// never undoes the choice on screen.
 class ThemeSettings extends ChangeNotifier {
-  ThemeSettings(this._store, {this.skin = defaultSkin, this.mode = ThemeMode.system});
+  ThemeSettings(
+    this._store, {
+    this.skin = defaultSkin,
+    this.mode = ThemeMode.system,
+  });
 
   final ThemeStore _store;
 

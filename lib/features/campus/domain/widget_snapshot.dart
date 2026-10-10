@@ -360,15 +360,9 @@ class WidgetSnapshotBuilder {
     return rest == 0 ? '$hours 小时' : '$hours 小时 $rest 分钟';
   }
 
-  static (String, String) _headline(
-    CourseOccurrence occurrence,
-    DateTime now,
-  ) {
+  static (String, String) _headline(CourseOccurrence occurrence, DateTime now) {
     if (occurrence.isOngoing(now)) {
-      return (
-        '正在上课',
-        '还剩 ${_durationText(occurrence.endsAt.difference(now))}',
-      );
+      return ('正在上课', '还剩 ${_durationText(occurrence.endsAt.difference(now))}');
     }
     final wait = occurrence.startsAt.difference(now);
     return (
