@@ -20,9 +20,9 @@
 
 Android / iOS 桌面课表小组件共享 Flutter 计算的展示数据，支持点击进入课表、同步主题色和退出清理。iOS 使用同一 App Group 连接主应用与 Widget Extension。
 
-课前灵动岛目前仅开放指定测试账号的「我的 → 灵动岛测试」。iOS 26 及以上在开启测试 3 秒后预约显示；旧系统需要 iOS 16.2 及以上并立即显示。已具备按大课计算课前 15 分钟、开课后 1 分钟的时间窗口，但正式自动提醒尚未启用：App 被挂起或关闭后的可靠结束仍需 APNs 支持。详见 [灵动岛实现与验证边界](docs/course-live-activity-ui.md)。
+iOS 课前提醒已接入「我的 → 课前提醒」，由用户主动开启通知权限。基于当前学期的实际课程，安排未来 7 天课前 15 分钟的一次性提醒。iOS 26 及以上可另行开启自动灵动岛，最近两次课程优先预约实时活动，其余课程及预约失败的课程使用普通通知；旧系统使用普通通知。退出、切换账号、关闭提醒及调课会核对清理系统任务。没有配置 APNs，App 被挂起或关闭后的定时结束仍无法保证；启用灵动岛前会说明，重新打开 App 会清理过期活动。旧测试入口已移除。详见 [课前提醒实现与验证边界](docs/course-reminders.md)。
 
-`pubspec.yaml` 中的 `1.0.0+1` 是重建工程的起始版本号，不代表正式版已经发布。
+`pubspec.yaml` 当前为 `1.0.0+7`，构建号接续旧版 `0.1.5+6`，后续发布继续递增；这不代表正式版已经发布。
 
 ## 开发环境
 
@@ -113,9 +113,11 @@ flutter build apk --release
 flutter build ios --release --no-codesign
 ```
 
-当前使用模板构建配置：Android release 构建仍采用 debug 签名，iOS 上述命令生成未签名应用。正式分发前需要重新配置发布签名与发布流程；旧版自动发布工作流已移除。
+Android release 构建仍采用 debug 签名，正式分发前需要恢复旧版发布签名。iOS 发布提供未签名 IPA，由用户自行签名；打包保留主应用与 `ClassWidget` 扩展，移除所有签名和描述文件。`--no-codesign` 不保证依赖框架以及旧构建残留没有签名，封装前须检查并移除。旧版自动发布工作流已移除。
 
-iOS 主应用与 `ClassWidget` 扩展需要同一个开发团队，并同时具备 `group.com.sayqz.xinliLite` 的 App Group 权限。项目已包含扩展 target。真机测试可通过 Xcode 构建参数 `XINLI_APP_BUNDLE_IDENTIFIER=com.sayqz.xinliLite.dev` 使用独立标识；主应用与扩展的版本号统一读取 Flutter 配置。
+iOS 用户自签名时，主应用与 `ClassWidget` 扩展需要同一个开发团队，并同时具备一致且获授权的 App Group 权限；工程使用 `group.com.sayqz.xinliLite`，换团队重签时需由签名工具和描述文件正确处理。重签工具需保留扩展及实时活动配置，不能仅签主应用或剥离扩展。项目已包含扩展 target。真机测试可通过 Xcode 构建参数 `XINLI_APP_BUNDLE_IDENTIFIER=com.sayqz.xinliLite.dev` 使用独立标识；主应用与扩展的版本号统一读取 Flutter 配置。
+
+老 iOS 用户能否覆盖安装取决于自签名后的应用身份是否与旧版一致，构建号提高不能绕过系统签名校验。重构版升级后需要重新登录。
 
 应用标识保持不变：
 
