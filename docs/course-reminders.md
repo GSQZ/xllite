@@ -49,6 +49,6 @@ xcrun swiftc ios/Runner/CourseReminderSchedule.swift test/native/course_reminder
 /tmp/xinli-reminder-native-test
 ```
 
-还需在真实 iPhone 验证系统预定触发、锁屏/灵动岛呈现、通知声音、通知点击冷启动、权限变更、手动移除、重启，以及被挂起/关闭后的实际结束行为。自动化测试和未签名构建不替代这些验证，没有新增真机安装或真实账号操作。
+2026-10-10 项目作者已在真机验证灵动岛正常工作（系统预定触发与锁屏/灵动岛呈现）。通知声音、通知点击冷启动、权限变更、手动移除、重启，以及被挂起/关闭后的实际结束行为仍需实测确认；自动化测试和未签名构建不替代这些验证。
 
 API 依据：[Apple 预定实时活动](https://developer.apple.com/documentation/activitykit/activity/request(attributes:content:pushtype:style:alertconfiguration:start:))、[Apple 实时活动推送](https://developer.apple.com/documentation/ActivityKit/starting-and-updating-live-activities-with-activitykit-push-notifications)、[Apple 通知授权](https://developer.apple.com/documentation/usernotifications/asking-permission-to-use-notifications)。

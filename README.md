@@ -113,7 +113,7 @@ flutter build apk --release
 flutter build ios --release --no-codesign
 ```
 
-Android release 构建仍采用 debug 签名，正式分发前需要恢复旧版发布签名。iOS 发布提供未签名 IPA，由用户自行签名；打包保留主应用与 `ClassWidget` 扩展，移除所有签名和描述文件。`--no-codesign` 不保证依赖框架以及旧构建残留没有签名，封装前须检查并移除。旧版自动发布工作流已移除。
+Android release 构建已恢复 0.x 的发布密钥签名，与旧版证书一致，可覆盖安装升级。密钥从本地 `android/key.properties`（密钥库不入库）或同名环境变量读取，缺失时才回退 debug 签名，仅用于本地调试、不可分发。iOS 发布提供未签名 IPA，由用户自行签名；打包保留主应用与 `ClassWidget` 扩展，移除所有签名和描述文件。`--no-codesign` 不保证依赖框架以及旧构建残留没有签名，封装前须检查并移除。旧版自动发布工作流已移除。
 
 iOS 用户自签名时，主应用与 `ClassWidget` 扩展需要同一个开发团队，并同时具备一致且获授权的 App Group 权限；工程使用 `group.com.sayqz.xinliLite`，换团队重签时需由签名工具和描述文件正确处理。重签工具需保留扩展及实时活动配置，不能仅签主应用或剥离扩展。项目已包含扩展 target。真机测试可通过 Xcode 构建参数 `XINLI_APP_BUNDLE_IDENTIFIER=com.sayqz.xinliLite.dev` 使用独立标识；主应用与扩展的版本号统一读取 Flutter 配置。
 
