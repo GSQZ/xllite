@@ -1,11 +1,51 @@
 package com.sayqz.xinli_lite
 
+import android.content.res.Configuration
+import android.content.res.Resources
 import com.sayqz.xinli_lite.widget.ClassWidgetProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var densityResources: Resources? = null
+    private var sourceConfiguration: Configuration? = null
+    private var sourceWidth = 0
+    private var sourceHeight = 0
+
+    override fun getResources(): Resources {
+        val original = super.getResources()
+        val config = original.configuration
+        val metrics = original.displayMetrics
+        val dpi = AppDisplayDensity.densityDpi(
+            metrics.widthPixels,
+            metrics.heightPixels,
+            config.densityDpi,
+            config.smallestScreenWidthDp,
+            config.screenWidthDp,
+        )
+        if (dpi == config.densityDpi) return original
+        if (sourceConfiguration != config || sourceWidth != metrics.widthPixels ||
+            sourceHeight != metrics.heightPixels || densityResources == null
+        ) {
+            sourceConfiguration = Configuration(config)
+            sourceWidth = metrics.widthPixels
+            sourceHeight = metrics.heightPixels
+            // A separate resource context changes only this Activity. Flutter
+            // reads its DPR here, so rendering, insets, taps and platform views
+            // share a real coordinate system. Leave fontScale/locales intact.
+            val override = Configuration(config).apply { densityDpi = dpi }
+            densityResources = baseContext.createConfigurationContext(override).resources
+        }
+        return densityResources!!
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        densityResources = null
+        sourceConfiguration = null
+        super.onConfigurationChanged(newConfig)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         pendingRoute = intent?.getStringExtra(EXTRA_ROUTE)
