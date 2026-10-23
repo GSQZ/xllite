@@ -25,12 +25,15 @@ check('LoginPage theme overlay remains inside the root Stack', () => {
   const source = fs.readFileSync(path.join(pages, 'LoginPage.ets'), 'utf8');
   assert.match(source, /\n      ThemeWash\(\)\n    \}\.width\('100%'\)\.height\('100%'\)\.backgroundColor\(this\.palette\.background\)\n  \}/);
 });
-check('profile does not advertise graduation results as a training plan', () => {
+check('training plan entry is gone and nothing links to a removed page', () => {
   const profile = fs.readFileSync(path.join(pages, 'ProfileTab.ets'), 'utf8');
-  const training = fs.readFileSync(path.join(pages, 'TrainingPage.ets'), 'utf8');
-  assert.doesNotMatch(profile, /this\.MenuRow\([^\n]*'TrainingPage'/);
-  assert.doesNotMatch(training, /培养方案/);
-  assert.match(training, /title: '毕业完成情况'/);
+  const constants = fs.readFileSync(path.join(root, 'entry/src/main/ets/utils/Constants.ets'), 'utf8');
+  // 培养方案没有真实数据来源（网关返回空的 training 集合），入口与页面一并移除。
+  // 这里钉住三件事：没人再链到那个页面、服务表里没有它、页面文件确实不在。
+  assert.doesNotMatch(profile, /'TrainingPage'/);
+  assert.doesNotMatch(constants, /jw\.training/);
+  assert.doesNotMatch(constants, /培养方案/);
+  assert.equal(fs.existsSync(path.join(pages, 'TrainingPage.ets')), false);
 });
 check('unresolved course sections are labelled instead of rendered as 00:00', () => {
   const schedule = fs.readFileSync(path.join(pages, 'ScheduleTab.ets'), 'utf8');

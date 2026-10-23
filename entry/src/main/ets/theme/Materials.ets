@@ -10,8 +10,11 @@ export function supportsImmersiveMaterial(): boolean {
 }
 export function loadImmersiveMaterial(): Promise<boolean> {
   const rawApi = deviceInfo.sdkApiVersion
-  const api = rawApi >= 100000000 ? rawApi % 1000 : rawApi
-  if (!Number.isInteger(rawApi) || !Number.isInteger(api) || api < 26) return Promise.resolve(false)
+  // 与 LiveViewService 的 apiLevel 保持同一套规则：编码形态 6.1.0(23) -> 60100023，
+  // 门槛必须低于该量级，否则八位编码会原样参与比较而把所有版本判断顶成真。
+  if (!Number.isInteger(rawApi) || rawApi <= 0) return Promise.resolve(false)
+  const api = rawApi >= 10000000 ? rawApi % 1000 : rawApi
+  if (!Number.isInteger(api) || api < 26) return Promise.resolve(false)
   if (checkSupport !== null) return Promise.resolve(supportsImmersiveMaterial())
   if (loading !== null) return loading
   loading = import('./NativeMaterials').then((adapter) => {

@@ -1,6 +1,6 @@
 import { getColors, ColorPalette } from '../theme/Colors'
 import { Course } from '../models/JwTypes'
-import { ALL_TIMES, ClassTime, classStatus } from '../utils/ClassTime'
+import { ALL_TIMES, ClassTime, classStatus, formatMinutes } from '../utils/ClassTime'
 import { scheduleBlocks, ScheduleBlock } from '../utils/ScheduleLayout'
 import { localDateText } from '../utils/CourseCalendar'
 import { stableHash } from '../utils/Hash'
@@ -17,7 +17,7 @@ export struct ScheduleGrid {
   @StorageLink('isDark') @Watch('onThemeChange') isDark: boolean = false
   @State palette: ColorPalette = getColors(false)
   @State blocks: ScheduleBlock[] = []
-  private readonly rowHeight: number = 64
+  private readonly rowHeight: number = 78
   private readonly dayWidth: number = 112
 
   aboutToAppear(): void { this.palette = getColors(this.isDark); this.refreshBlocks() }
@@ -91,9 +91,13 @@ export struct ScheduleGrid {
           Row() {
             Column() {
               ForEach(ALL_TIMES, (time: ClassTime, row: number) => {
-                Column({ space: 5 }) {
+                // 起止时间都给出来。原来只显示开始时间，"这节课上到几点"要自己算，
+                // 45 分钟一节的作息下很容易记错；把结束时间并排放在下面一行，
+                // 一眼就能对上"10:00 上课、10:45 下课"。
+                Column({ space: 2 }) {
                   Text(String(row + 1)).fontSize(13).fontWeight(FontWeight.Medium).fontColor(this.palette.onSurface)
-                  Text(time.label.split(' - ')[0]).fontSize(10).fontColor(this.palette.onSurfaceVariant)
+                  Text(formatMinutes(time.startMinutes)).fontSize(10).fontColor(this.palette.onSurfaceVariant)
+                  Text(formatMinutes(time.endMinutes)).fontSize(10).fontColor(this.palette.onSurfaceVariant).opacity(0.9)
                 }.width(48).height(this.rowHeight).justifyContent(FlexAlign.Center)
                   .border({ width: { bottom: 0.5 }, color: this.palette.outline })
               })

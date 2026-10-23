@@ -1,6 +1,6 @@
 import { getColors, ColorPalette, withAlpha } from '../theme/Colors'
 import { Course } from '../models/JwTypes'
-import { ALL_TIMES, ClassTime, classStatus } from '../utils/ClassTime'
+import { ALL_TIMES, ClassTime, classStatus, formatMinutes } from '../utils/ClassTime'
 import { scheduleBlocks, ScheduleBlock } from '../utils/ScheduleLayout'
 import { stableHash } from '../utils/Hash'
 
@@ -18,7 +18,7 @@ export struct WeekOverview {
   @State palette: ColorPalette = getColors(false)
   @State blocks: ScheduleBlock[] = []
   @State availableWidth: number = 360
-  private readonly railWidth: number = 34
+  private readonly railWidth: number = 40
   private readonly rowHeight: number = 60
 
   aboutToAppear(): void { this.palette = getColors(this.isDark); this.refreshBlocks() }
@@ -104,10 +104,14 @@ export struct WeekOverview {
       Row() {
         Column() {
           ForEach(ALL_TIMES, (time: ClassTime, row: number) => {
-            Column({ space: 4 }) {
-              Text(String(row + 1)).fontSize(12).fontWeight(FontWeight.Medium).fontColor(this.palette.onSurface)
-              Text(time.label.split(' - ')[0]).fontSize(9).fontColor(this.palette.onSurfaceVariant)
-            }.width(this.railWidth).height(this.rowHeight).justifyContent(FlexAlign.Center)
+              // 起止时间都写出来：只给开始时间的话，"几点下课"还要自己加 45 分钟，
+              // 在 45 分钟一节的作息下很容易记错。用 formatMinutes 从分钟数直接格式化，
+              // 不依赖 label 的字符串分隔符。
+              Column({ space: 2 }) {
+                Text(String(row + 1)).fontSize(12).fontWeight(FontWeight.Medium).fontColor(this.palette.onSurface)
+                Text(formatMinutes(time.startMinutes)).fontSize(9).fontColor(this.palette.onSurfaceVariant)
+                Text(formatMinutes(time.endMinutes)).fontSize(8).fontColor(this.palette.onSurfaceVariant).opacity(0.9)
+              }.width(this.railWidth).height(this.rowHeight).justifyContent(FlexAlign.Center)
               .border({ width: { bottom: 0.5 }, color: this.palette.outline })
           })
         }.width(this.railWidth)

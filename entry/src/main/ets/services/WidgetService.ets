@@ -1,6 +1,6 @@
 import common from '@ohos.app.ability.common'
 import fs from '@ohos.file.fs'
-import { formProvider, formBindingData } from '@kit.FormKit'
+import { formProvider, formBindingData, formInfo } from '@kit.FormKit'
 import { ScheduleSnapshot, CampusWidgetData } from '../models/CampusCompanionTypes'
 import { widgetData } from '../utils/CourseCalendar'
 
@@ -52,13 +52,31 @@ export function saveWidgetSnapshot(context: common.Context, snapshot: ScheduleSn
   try { fs.writeSync(file.fd, JSON.stringify(snapshot)) } finally { fs.closeSync(file) }
   fs.renameSync(path + '.tmp', path)
 }
-export async function updateCampusWidgets(data: CampusWidgetData): Promise<void> {
-  const forms = await formProvider.getPublishedRunningFormInfos()
+/**
+ * 把最新数据推给桌面上已存在的课表卡片，返回真正更新到的卡片数。
+ *
+ * 返回数量而不是 void，是为了让调用方能区分两件完全不同的事：
+ * 「桌面上没放卡片」和「放了但更新失败」。前者不是错误——用户还没添加而已，
+ * 报成"更新失败"会让人以为功能坏了，去反复点重试。
+ *
+ * 取卡片列表本身也可能抛错（系统服务未就绪等），这里把它归成 0 张并交由调用方
+ * 用另一路状态表达，不让整个同步链断掉。
+ */
+export async function updateCampusWidgets(data: CampusWidgetData): Promise<number> {
+  let forms: formInfo.RunningFormInfo[] = []
+  try {
+    forms = await formProvider.getPublishedRunningFormInfos()
+  } catch (_error) {
+    return 0
+  }
+  let updated: number = 0
   for (const form of forms) {
     if (form.formName === 'CampusScheduleCard') {
       await formProvider.updateForm(form.formId, formBindingData.createFormBindingData(data))
+      updated++
     }
   }
+  return updated
 }
 export function buildFormBinding(context: common.Context, formName: string): formBindingData.FormBindingData {
   try {

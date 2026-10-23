@@ -80,7 +80,7 @@ export function getCourseMinutes(sections: string): [number, number] {
   return parseSections(sections)
 }
 
-/** 节次能否映射到当前作息表;例如 8 大节之外的 "9-10节" 返回 false */
+/** 节次能否映射到当前作息表;例如超出 10 节的 "11-12节" 返回 false */
 export function sectionsResolved(sections: string): boolean {
   return sectionNumbers(sections).length > 0
 }

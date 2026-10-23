@@ -44,8 +44,18 @@ for (const [name, p, base, alpha] of [['light', moduleObject.exports.LightColors
 }
 const report = { checkedAt: new Date().toISOString(), scope: 'Opaque text tokens; translucent/native materials require screenshot review.', threshold: 4.5,
   minimum: Math.min(...pairs.map(p => p.ratio)), checks: pairs.length, failed: pairs.filter(p => !p.pass), pairs };
+// 只在结论变化时落盘。快照文件被跟踪，每次跑测试都换时间戳会把工作区弄脏，
+// 提交里就会混进一条与对比度无关的改动。
+const snapshotPath = path.join(root, '.wolf/quality-contrast.json');
+const previous = (() => {
+  try { return JSON.parse(fs.readFileSync(snapshotPath, 'utf8')); } catch (_error) { return null; }
+})();
+const sameResult = previous !== null && previous.minimum === report.minimum
+  && previous.checks === report.checks && JSON.stringify(previous.pairs) === JSON.stringify(report.pairs)
+  && (previous.failed || []).length === report.failed.length;
+if (sameResult) report.checkedAt = previous.checkedAt;
 fs.mkdirSync(path.join(root, '.wolf'), { recursive: true });
-fs.writeFileSync(path.join(root, '.wolf/quality-contrast.json'), JSON.stringify(report, null, 2));
+fs.writeFileSync(snapshotPath, JSON.stringify(report, null, 2));
 console.log(report.checks + ' token contrast checks; minimum ' + report.minimum + ':1; ' + report.failed.length + ' failed.');
 for (const pair of report.failed) console.error(pair);
 process.exitCode = report.failed.length ? 1 : 0;

@@ -60,9 +60,36 @@
 /.preview/
 /.ui-backups/
 /.wolf/*
-!/.wolf/memory.md
-!/.wolf/*.json
+# 仅保留工具链实际读写的基线；其余为本机过程快照，不随仓库分发
+!/.wolf/arkts-warnings-baseline.json
+!/.wolf/build-api26-inputs.json
+!/.wolf/campus-companion-checks.json
+!/.wolf/quality-contrast.json
 /*.jpeg
+
+# ===== 与本工程无关的独立附属项目（各自单独管理，不随本仓库分发） =====
+/quiz-network/
+/volc-ai-proxy/
+/.claude/
+
+# ===== 根目录历史归档与实施报告（不属于交付物） =====
+/API26*.md
+/*实施报告.md
+/*旧版报告*.md
+/计算机网络题库-刷题.html
+
+# ===== 模拟器验收产物（可由构建与验收流程复现） =====
+/docs/simulator-verify-*/
+
+# ===== 本机设备验收记录（过程材料，结论已记入契约文档） =====
+/docs/DEVICE-VERIFICATION.md
+
+# ===== 本地一次性探测脚本（结论已记入文档，不随仓库分发） =====
+/tools/glass-ab-probe.py
+/tools/generate-icon-concepts.py
+
+# ===== 未上线的备选设计稿（线上素材以 docs/brand 根目录为准） =====
+/docs/brand/concepts/
 
 # ===== 通用依赖与本地日志 =====
 node_modules/

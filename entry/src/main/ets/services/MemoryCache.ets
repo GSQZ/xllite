@@ -30,8 +30,13 @@ function getPrefs(): Promise<preferences.Preferences> | null {
 }
 
 function enqueue(action: () => Promise<void>): Promise<void> {
-  persistenceTask = persistenceTask.then(action).catch((_e: Error) => {})
-  return persistenceTask
+  const task = persistenceTask.then(action)
+  // 队列本身必须推进（否则一次失败会卡死后续所有写盘），但失败要原样交给调用方。
+  // 原先这里 .catch(() => {}) 之后返回，clearAllCachedValues 永不 reject，于是
+  // clearSession 的 Promise.all 把它当作成功——磁盘上的课表、成绩、流水缓存
+  // 仍然留着，而用户看到的是「已退出登录」。
+  persistenceTask = task.then((): void => {}, (): void => {})
+  return task
 }
 
 function scheduleFlush(): void {
@@ -58,6 +63,8 @@ function remember(key: string, entry: CacheEntry): void {
     const oldest = cacheStore.keys().next().value as string
     cacheStore.delete(oldest)
     const epoch = sessionEpoch
+    // 缓存条目回收是尽力而为：删不掉最多让磁盘多留一条过期数据，
+    // 但必须接住拒绝，否则会变成未处理的 Promise 拒绝。
     enqueue(async () => {
       const task = getPrefs()
       if (task === null) return
@@ -65,7 +72,7 @@ function remember(key: string, entry: CacheEntry): void {
       if (epoch !== sessionEpoch) return
       await prefs.delete(oldest)
       scheduleFlush()
-    })
+    }).catch((_e: Error) => {})
   }
 }
 

@@ -21,16 +21,21 @@
 
 ## 已核对的代码文件
 
-- `entry/src/main/ets/pages/RechargePage.ets`：config → 选金额/支付方式 → create_order → WebView 加载 `payResult.h5Url`（url）或 `htmlPost` 转 dataUrl（html）。
+- `entry/src/main/ets/pages/RechargePage.ets`：config → 选金额/支付方式 → create_order → 按以下优先级取支付入口，命中即进入 WebView：
+  1. `payResult.htmlPost` 转 dataUrl 内联渲染（html）；
+  2. `payResult.officialTransferUrl` 直接加载（url）；
+  3. `payResult.h5Url` 直接加载（url）。
+
+  三者都没有时如实提示"订单已创建，但服务端没有返回支付入口"，并引导到一卡通账户查询——不能当成功，也不能当失败让用户重下单。`htmlPost` 排在最前是因为它把整段表单内联，不受外部页面可达性影响。
 - `entry/src/main/ets/pages/QRCodePage.ets`：只消费 `newcard.campus_code.qrcode`，生成付款码，与充值下单契约无重叠，本次无改动。
 - `entry/src/main/ets/services/ApiService.ets`：网关会话下所有业务（含 create_order）经 `gatewayRun` 走 `/api/v1/run`；仅 `jw.schedule`/`jw.profile`/`jw.grades`/`jw.exams`/`jw.training`/`newcard.balance`/`newcard.transactions`/`newcard.electricity.account` 走读缓存。
-- `entry/src/main/ets/services/XlliteGateway.ets`：`GATEWAY_FEATURE_NAMES` 覆盖 13 个 feature，含 `newcard.recharge.config`/`create_order`；`gatewayRun` 校验 `data` 必填字段集合（充值两接口不在集合校验内，按服务端实际返回）。
+- `entry/src/main/ets/services/XlliteGateway.ets`：`GATEWAY_FEATURE_NAMES` 覆盖 13 个 feature，含 `newcard.recharge.config`/`create_order`。`gatewayRun` 对六项业务校验 `data` 里的集合字段（`jw.schedule`→`courses`、`jw.grades`→`normalGrades`、`jw.exams`→`exams`、`jw.training`→`training`、`newcard.balance`→`accounts`、`newcard.transactions`→`transactions`）；充值下单与电费缴费这两个支付入口不校验集合，但**单独校验 `payResult` 必须是对象**——漏发时订单往往已在服务端创建成功，当成成功继续走会在空对象上取属性、被通用 catch 吞成"网络失败"，用户看不出订单已存在，很可能重复下单。
 
 ## 文档缺口（已补齐）
 
 `docs/SCHOOL-NATIVE-API.md` 仅标记 `newcard.recharge.create_order`「尚未实施」，未沉淀 payCode 枚举与网关契约。本次核对补入本文件。
 
-`docs/2026-10-17-CONTRACT-RECHECK.md` 已说明 create_order 返回支付入口、下单不等于支付成功，与本文一致。
+create_order 返回支付入口，下单不等于支付成功，与本文一致。
 
 ## 后续条件
 

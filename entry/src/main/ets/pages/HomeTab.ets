@@ -264,7 +264,7 @@ export struct HomeTab {
     // 8 项常用服务全部平铺可见，不再折叠：电费查询与一卡通充值排前两位。
     return [featureByName('newcard.electricity.account'), featureByName('newcard.recharge.config'),
       featureByName('jw.schedule'), featureByName('jw.grades'), featureByName('jw.exams'),
-      featureByName('newcard.transactions'), featureByName('jw.training'), featureByName('local.todos')]
+      featureByName('newcard.transactions'), featureByName('local.todos')]
   }
 
   private featureIcon(item: FeatureDef): ResourceStr {
@@ -416,26 +416,9 @@ export struct HomeTab {
               }.width('100%')
             }
           }.width('100%')
-          Column() {
-            this.SectionHeading('待办 · ' + this.openTodoItems.length.toString(), '全部 ›', featureByName('local.todos'))
-            CampusCard({ contentPadding: 16 }) {
-              if (this.openTodoItems.length === 0) {
-                Row({ space: 12 }) {
-                  CampusIcon({ source: $r('app.media.campus_todo'), iconSize: 40, badgeColor: this.palette.surfaceVariant })
-                  Column({ space: 5 }) {
-                    Text('还没有待办').fontSize(14).fontWeight(FontWeight.Medium).fontColor(this.palette.onSurface)
-                    Text('把作业、考试和重要的事记下来').fontSize(Typography.caption.fontSize).fontColor(this.palette.onSurfaceVariant)
-                  }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-                  Button('添加').height(44).fontSize(12).fontColor(this.palette.primary)
-                    .backgroundColor(this.palette.primaryContainer).borderRadius(12)
-                    .onClick(() => this.openFeature(featureByName('local.todos')))
-                }.width('100%')
-              } else {
-                ForEach(this.openTodoItems.slice(0, 3), (item: TodoItem) => { this.TodoPreview(item) },
-                  (item: TodoItem): string => item.id)
-              }
-            }
-          }.width('100%')
+          // 待办已提升为底部导航的独立一页，首页不再重复展示它的摘要：
+          // 同一个东西出现在两处，用户会分不清「在首页勾掉」和「进待办页处理」
+          // 是不是同一件事。首页只留概览性内容。
         }
           .width('100%')
           .padding({ left: 20, right: 20, top: 4, bottom: this.safeAreaBottom + 104 })

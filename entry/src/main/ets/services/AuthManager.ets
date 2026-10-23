@@ -34,9 +34,9 @@ function getPrefs(): Promise<preferences.Preferences> | null {
   })
   return prefsTask
 }
-function enqueue(action: () => Promise<void>): Promise<void> {
+function enqueue<T = void>(action: () => Promise<T>): Promise<T> {
   const task = persistenceTask.then(action)
-  persistenceTask = task.catch((_e: Error) => {})
+  persistenceTask = task.then((): void => {}, (): void => {})
   return task
 }
 export async function loadElectricityRoom(): Promise<string> {
@@ -64,18 +64,22 @@ export async function loadElectricityRoom(): Promise<string> {
   })
   return room
 }
-export function saveElectricityRoom(value: string): Promise<void> {
+// 返回是否真的写入。原先这里在无账号、空值或会话变化时静默 return，而调用方
+// 用 try/catch 期待异常来提示「宿舍绑定未保存」——静默返回让那段提示永远不触发，
+// 用户下次进来还得重新输入宿舍号，却不知道为什么没记住。
+export function saveElectricityRoom(value: string): Promise<boolean> {
   const epoch = getCacheEpoch()
   const owner = savedUsername
   const room = value.trim()
-  return enqueue(async () => {
+  return enqueue(async (): Promise<boolean> => {
     const task = getPrefs()
-    if (task === null || owner.length === 0 || room.length === 0 || epoch !== getCacheEpoch() || owner !== savedUsername) return
+    if (task === null || owner.length === 0 || room.length === 0 || epoch !== getCacheEpoch() || owner !== savedUsername) return false
     const prefs = await task
-    if (epoch !== getCacheEpoch() || owner !== savedUsername) return
+    if (epoch !== getCacheEpoch() || owner !== savedUsername) return false
     await prefs.put('electricity_room', room)
     await prefs.put('electricity_room_owner', owner)
     await prefs.flush()
+    return true
   })
 }
 export async function loadSession(): Promise<boolean> {

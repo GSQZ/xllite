@@ -1,8 +1,8 @@
 {
-  "checkedAt": "2026-10-21T05:36:05.728Z",
+  "checkedAt": "2026-10-23T11:37:09.925Z",
   "networkUsed": false,
   "nativeApisMocked": true,
-  "checks": 90,
+  "checks": 108,
   "failed": 0,
   "results": [
     {
@@ -35,6 +35,10 @@
     },
     {
       "name": "todo reminder service registers native todo routes and preserves courses",
+      "ok": true
+    },
+    {
+      "name": "a reminder published during logout is withdrawn again",
       "ok": true
     },
     {
@@ -254,7 +258,31 @@
       "ok": true
     },
     {
-      "name": "enabled LiveView distinguishes waiting, empty day and active countdown from disabled state",
+      "name": "HarmonyOS 6.0 live view carries the dynamic island tail affordances",
+      "ok": true
+    },
+    {
+      "name": "live view before API 20 omits only the tail members that do not exist yet",
+      "ok": true
+    },
+    {
+      "name": "live view fixed area uses the system timer placeholder so the island ticks itself",
+      "ok": true
+    },
+    {
+      "name": "the timer placeholder is never a standalone content entry",
+      "ok": true
+    },
+    {
+      "name": "the countdown reaches a preset ending instead of a raw zero",
+      "ok": true
+    },
+    {
+      "name": "capsule keeps its island affordances when the course switches to 上课中",
+      "ok": true
+    },
+    {
+      "name": "enabled LiveView registers the next class immediately instead of waiting for a ten-minute gate",
       "ok": true
     },
     {
@@ -314,6 +342,30 @@
       "ok": true
     },
     {
+      "name": "capsule members are gated by the API level that introduced them",
+      "ok": true
+    },
+    {
+      "name": "live view timer is only set on API 12 and above",
+      "ok": true
+    },
+    {
+      "name": "a refused live view update rolls the system version back",
+      "ok": true
+    },
+    {
+      "name": "a stop that reports already ended is treated as done, not retried forever",
+      "ok": true
+    },
+    {
+      "name": "a refused live view stop rolls the system version back",
+      "ok": true
+    },
+    {
+      "name": "the class-start transition rolls the system version back when refused",
+      "ok": true
+    },
+    {
       "name": "todo live target uses structured deadline rather than fabricated one hour",
       "ok": true
     },
@@ -362,7 +414,27 @@
       "ok": true
     },
     {
+      "name": "live view state changes reach the device log",
+      "ok": true
+    },
+    {
+      "name": "disabled live view switch never starts a surface",
+      "ok": true
+    },
+    {
       "name": "failed LiveView stop reports logout failure after privacy and reminder cleanup",
+      "ok": true
+    },
+    {
+      "name": "api level normalises the eight-digit encoding instead of trusting it raw",
+      "ok": true
+    },
+    {
+      "name": "reminder group names come from one constant, never a fresh literal",
+      "ok": true
+    },
+    {
+      "name": "course reminders are cancelled by group, never by a stored id list",
       "ok": true
     }
   ]

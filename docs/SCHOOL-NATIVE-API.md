@@ -1,8 +1,8 @@
 # 学校原生接口直连说明
 
-> 2026-10-16 核对：当前进度以 [PROJECT-STATUS.md](PROJECT-STATUS.md) 为准。本页以下主要保留 10 月 9–10 日契约与实施历史。当前代码按会话来源选择学校直连或整条网关分支，并非逐功能原生优先后自动兜底；XLLite 在线可用性与完整链路尚待专项验收。
+> 本页保留 10 月 9–10 日的契约核对与实施记录。当前代码按会话来源选择学校直连或整条网关分支，并非逐功能原生优先后自动兜底；XLLite 在线可用性与完整链路尚待专项验收。
 
-更新：2026-10-09。需求：艾哥明确要求直接接入新疆理工学院原生服务，不采用自建反向代理或原项目 IP 网关。
+更新：2026-10-09。需求：直接接入新疆理工学院原生服务，不采用自建反向代理或原项目 IP 网关。
 另：2026-10-10 新增 XLLite 统一网关（`https://xllite.sayqz.com`，参照 GSQZ/xllite 仓库）兜底通道，
 覆盖 13 个 feature 的登录/刷新/退出与业务调用；学校原生直连仍优先，网关会话下未适配的 feature 自动重定向。
 
@@ -62,6 +62,8 @@
 网关会话（`auth_source=xllite-gateway`）下未实现原生适配的 feature 自动重定向到网关。
 网关当前 TCP 8765 端口不通、80/443 无服务，实际请求需待网关恢复后验证，代码已就绪。）
 
+下表列的是**学校原生直连**还缺什么。"尚未实施"指原生协议未落地，不代表功能不可用——这些业务在网关会话下已能走 `/api/v1/run`，其中两个支付入口（`newcard.recharge.create_order`、`newcard.electricity.recharge.pay`）已在 `RechargePage` / `ElectricityPage` 中实现下单与 WebView 支付跳转，并由 `XlliteGateway` 校验响应必须带回 `payResult` 对象。
+
 | 业务标识 | 已知线索与缺口 |
 | --- | --- |
 | jw.schedule | 学校日历有 getEvents/getSection/getWeekOfTeaching；教务课程另有 courseTable/day、courseList/list 等。需确认认证后的动态服务地址、学期/周次、课程结构，不能把日历事件全部当课程 |
@@ -109,18 +111,12 @@
 | 正式工程包，未签名 | .wolf/school-native-production/entry-default-unsigned.hap | BB38AF35894830C436F8E35EF691773D500620580E9AA03A91C37ABA82A95E3F |
 | 模拟器独立直连包，测试签名 | .wolf/school-native-emulator/entry-school-native-signed.hap | 6528FF36F46CBDEEEBCB22FC0194CD322D85B826CD959B90D838FA6607B53CD7 |
 
-结构化验收记录：[school-native-verification.json](../.wolf/school-native-verification.json)。测试日志位于 `.wolf/school-native-build`，安装/启动/截图位于 `.wolf/school-native-emulator`。
-
-公开学校协议原文和格式化文本位于 `.wolf/native-api-discovery`，只作为文本检查，未执行获取的学校 JS。原文获取信息见 public-endpoints.json、公开 JS 清单及 superapp-my-contract.json；sha256-manifest.json 为本地保留文件完整性记录，不冒充学校发布的官方哈希。
+结构化验收记录与测试日志保留在本机工具链目录，不随仓库分发；公开协议原文与格式化文本同样只作本地文本检查，未执行获取的学校 JS。
 
 复用现有 DevEco Studio 26.0.0.851、SDK 26.0.0.105/API26、Node 24.14.1、Hvigor 6.26.8、JBR、HDC 和 SDK 随附公开测试签名。没有新增 SDK、依赖、插件、下载工具或全局环境配置。一次性脚本以标准输入执行，没有临时可执行脚本残留；可复用构建与回归工具保留。
 
 ## 下一次真实接入验证
 
-艾哥在模拟器“掌上新理工·学校直连”内的学校认证页面手动登录，不在聊天中提供密码。先确认个人信息原生请求是否成功，再进入校园卡余额并通过学校一卡通页面认证，返回核对余额和流水。两套账户名称需分别确认。
+在模拟器「掌上新理工·学校直连」的学校认证页面手动登录，密码不写入日志或文档。先确认个人信息原生请求是否成功，再进入校园卡余额并通过学校一卡通页面认证，返回核对余额和流水。两套账户名称需分别确认。
 
 课表、成绩等后续适配需要认证后学校实际下发的服务地址、请求参数和脱敏响应结构；仅保留协议必要信息，不把 token、密码和完整个人数据写进日志或规范。付款要等交易签发与加密协议验证完成后单独验收，不能以查询回归替代。
-
-## 工具执行限制记录
-
-本轮自动审批曾拒绝“源码修改与后台构建/安装”的组合动作，以及新建大型 WebView 会话测试脚本的动作，返回仅为 blocked by policy，没有具体原因。没有重试这两个动作；改用前台构建、普通独立 HDC 安装和已有回归套件的有界传输/字段检查。历史 fixture 服务和 HDC 反向端口映射未重试，当前包没有使用它们。

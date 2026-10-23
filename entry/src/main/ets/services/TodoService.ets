@@ -50,7 +50,18 @@ export function setTodoContext(ctx: common.UIAbilityContext): void {
 // Tasks belong to whoever is signed in. The tag is stored next to the rows so a
 // later session can tell whose data it is even when sign-out cleanup never
 // reached disk, which is the case a plain "delete on logout" cannot cover.
-export function setTodoOwner(owner: string): void { todoOwner = owner }
+export function setTodoOwner(owner: string): void {
+  if (todoOwner === owner) return
+  // 账号变了，内存里那一份就属于上一个账号。只换 todoOwner 而不清缓存的话，
+  // loaded 仍是 true，下一次 loadTodos 会直接返回内存里的旧行——同进程内
+  // 切换账号或登出后仍能读到别人的待办。这里连同读取任务与已加载标记一起作废。
+  todoOwner = owner
+  if (loaded || loadTask !== null) {
+    loaded = false
+    loadTask = null
+    todoStore = []
+  }
+}
 let idCounter: number = 0
 // Two adds inside the same millisecond used to have a 1-in-100000 chance of
 // identical ids; a collision makes toggle/delete hit both rows. The counter is
@@ -138,7 +149,11 @@ function mutate(change: (items: TodoItem[]) => TodoItem[], version: number = ses
       await prefs.put('cleanup_pending', true)
       await prefs.flush()
     }
-    await prefs.put(KEY_OWNER, ownerTag())
+    // 清理时不要用当前（可能已登出的空）标记覆盖磁盘上的归属。clearSession 先
+    // setTodoOwner('') 再 clearTodos()，若这里无条件写 ownerTag() 就会把 owner
+    // 写成空串，于是同一个账号下次登录也要白白走一遍「异账号重置」。
+    const nextOwner = clearing ? String(await prefs.get(KEY_OWNER, '')) : ownerTag()
+    await prefs.put(KEY_OWNER, nextOwner)
     await prefs.put(KEY_ITEMS, snapshot)
     await prefs.flush()
     if (clearing) {
@@ -181,11 +196,22 @@ export async function loadTodos(): Promise<TodoItem[]> {
       const pending = await prefs.get('cleanup_pending', false)
       const storedOwner = await prefs.get(KEY_OWNER, '')
       if (typeof storedOwner !== 'string') throw new Error('待办归属标记异常，原数据已保留')
-      if (storedOwner !== ownerTag()) {
+      // 没有账号时既不读也不写：下面「异账号」分支会清空行并把 owner 写成当前标记，
+      // 而当前标记此时正是空串——等于用户只是没登录，就把盘上那个账号的待办抹掉了。
+      // 读不到数据是安全的，销毁别人的数据不是。
+      const owner = ownerTag()
+      if (owner.length === 0) {
+        if (version !== sessionVersion || cleanupPending) throw new Error('待办会话已变化，旧读取已失效')
+        todoStore = []
+        loaded = true
+        return
+      }
+      const sameOwner = storedOwner === owner
+      if (!sameOwner) {
         // Rows, and any cleanup marker, left behind by a different sign-in. Reset
         // both: the marker describes the previous owner's interrupted cleanup and
         // would otherwise stall this account on every later read.
-        await prefs.put(KEY_OWNER, ownerTag())
+        await prefs.put(KEY_OWNER, owner)
         await prefs.put(KEY_ITEMS, '[]')
         await prefs.put('cleanup_pending', false)
         await prefs.flush()

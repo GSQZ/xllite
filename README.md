@@ -18,8 +18,9 @@
 目标平台不同，鸿蒙版接入了 Flutter 层无法通用实现的系统能力：
 
 - **实况窗**：课前倒计时与待办计时以 `TIMER` 场景进入胶囊、锁屏与通知中心，并按错误码给出处置提示。
-- **小艺意图**：课表入口声明为系统意图，供小艺与系统搜索分发。
+- **小艺意图**：已核实平台契约——标准意图清单 101 项中无创建待办或提醒的意图，`JumpFunctionPage` 只能打开页面不能填充内容，故落地目标收敛为打开课表页。当前代码尚未接入，边界与实施条件见[小艺意图接入](docs/XIAOYI-INTENT-INTEGRATION.md)。
 - **原生沉浸材质**：API 26 设备走 `ImmersiveMaterial` 原生材质，低版本回落 `backgroundEffect`。
+- **底部导航浮岛**：底栏是一条不贴边的玻璃胶囊，选中态是比格子窄得多的胶囊在内部滑动，而不是整格变色——Flutter 的 `BottomNavigationBar` 只有整格高亮一种形态。指示器颜色按明暗主题分开：亮色必须带品牌色，纯白叠在白玻璃上等于没有选中态。
 - **系统提醒代理**：课程提醒交由 `reminderAgentManager` 托管，退出登录按 `groupId` 注销，不依赖落盘 ID。
 - **桌面服务卡片**：`CampusFormAbility` 提供课表卡片，快照失败时不注册提醒。
 - **跨版本兼容**：最低 API 23，高版本能力一律经运行时版本判断后动态导入，不进入低版本调用路径。
@@ -92,10 +93,10 @@ hdc shell aa start -a EntryAbility -b com.xjit.app
 ## 项目入口
 
 - [更新日志](CHANGELOG.md)：每次同步的变更记录。
-- [当前进度与下一步](docs/PROJECT-STATUS.md)：本轮实测结论、业务缺口、交付边界。
-- [目录与维护约定](docs/PROJECT-MAP.md)：源码、附属项目、工具链、历史产物和 Git 规则。
+- [目录与维护约定](docs/PROJECT-MAP.md)：源码结构、工具链、已移出内容与 Git 规则。
 - [学校接口与认证契约](docs/SCHOOL-NATIVE-API.md)：学校直连协议与历史验收。
-- [设计验收](docs/DESIGN-REVIEW-ACCEPTANCE.md)、[原生材质](docs/NATIVE-MATERIAL.md)、[实况窗申请草稿](docs/LIVEVIEW-APPLICATION.md)。
+- [原生材质](docs/NATIVE-MATERIAL.md)、[实况窗申请草稿](docs/LIVEVIEW-APPLICATION.md)、[小艺意图接入](docs/XIAOYI-INTENT-INTEGRATION.md)。
+- [提交审阅说明](docs/PR-DESCRIPTION.md)：本工程相对 Flutter 版的适配点、已实现业务与已知边界。
 
 ## 本机验证
 
@@ -118,7 +119,7 @@ pwsh -File .\tools\build-api26.ps1 -BuildRoot 'D:\XJITApp-organize-20261016-buil
 | `main` | Flutter 实现，与本工程无共同提交历史 |
 | `harmony` | 本工程，HarmonyOS ArkTS 实现。安装说明与更新日志均以此分支为准 |
 
-GitHub 仓库首页默认展示 `main`，看不到本文件。查看本分支请切换分支，或直接访问 `https://github.com/AIRE1084/xllite-HarmonyOS/tree/harmony`。
+GitHub 仓库首页默认展示 `harmony` 分支。`main` 分支是 Flutter 实现，与本工程无共同提交历史，不随本仓库分发鸿蒙代码。
 
 ## 参与与反馈
 

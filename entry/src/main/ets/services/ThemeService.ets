@@ -1,6 +1,7 @@
 import common from '@ohos.app.ability.common'
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant'
 import preferences from '@ohos.data.preferences'
+import { Logger } from '../utils/Logger'
 let systemDark: boolean = false
 let themeContext: common.UIAbilityContext | null = null
 let themeListener: ((isDark: boolean) => void) | null = null
@@ -67,31 +68,41 @@ export async function initTheme(ctx: common.UIAbilityContext): Promise<void> {
   } catch (_e) {}
   applyTheme()
 }
-export function setThemeMode(mode: string): Promise<void> {
-  if (mode !== 'system' && mode !== 'light' && mode !== 'dark') return Promise.resolve()
+export function setThemeMode(mode: string): Promise<boolean> {
+  if (mode !== 'system' && mode !== 'light' && mode !== 'dark') return Promise.resolve(false)
   themeRevision++
   AppStorage.setOrCreate<string>('themeMode', mode)
   applyTheme()
-  persistenceTask = persistenceTask.then(async () => {
-    const task = getPrefs()
-    if (task === null) return
-    const prefs = await task
-    await prefs.put('mode', mode)
-    await prefs.flush()
-  }).catch((_e: Error) => {})
-  return persistenceTask
+  return persistSetting('mode', mode)
 }
 
 /** App-level reduced motion preference; native controls keep their system feedback. */
-export function setReduceMotion(enabled: boolean): Promise<void> {
+export function setReduceMotion(enabled: boolean): Promise<boolean> {
   motionRevision++
   AppStorage.setOrCreate<boolean>('reduceMotion', enabled)
-  persistenceTask = persistenceTask.then(async () => {
+  return persistSetting('reduceMotion', enabled)
+}
+
+/**
+ * 落盘一个设置项，返回是否真的写成功。
+ *
+ * 不能像以前那样 `.catch(() => {})` 之后返回已解决的 Promise：界面已经按新值
+ * 切过去了，用户会以为设置已保存，重启却回到旧值。主题与减少动效都属于
+ * 用户显式选择的偏好，静默丢失体验最差，所以失败既要记日志也要让调用方知道。
+ */
+function persistSetting(key: string, value: string | boolean): Promise<boolean> {
+  const write = persistenceTask.then(async (): Promise<boolean> => {
     const task = getPrefs()
-    if (task === null) return
+    if (task === null) return false
     const prefs = await task
-    await prefs.put('reduceMotion', enabled)
+    await prefs.put(key, value)
     await prefs.flush()
-  }).catch((_e: Error) => {})
-  return persistenceTask
+    return true
+  })
+  // 队列本身必须继续推进，否则一次失败会把后续所有写入卡死；结果单独返回。
+  persistenceTask = write.then((): void => {}, (): void => {})
+  return write.catch((_e: Error): boolean => {
+    Logger.warn('Theme', 'setting not persisted key=%{public}s', key)
+    return false
+  })
 }

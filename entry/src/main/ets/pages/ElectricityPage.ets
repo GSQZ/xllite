@@ -67,8 +67,14 @@ struct ElectricityPage {
     if (res.ok) {
       this.electricity = res.data as Object as ElectricityAccount
       this.step = 2
-      try { await saveElectricityRoom(params['roomQuery'] as string) }
-      catch (_error) {
+      // 保存宿舍号是「记住上次输入」的便利功能，失败不影响本次查询结果，
+      // 但要让用户知道下次还得重输，而不是默默当作已记住。
+      try {
+        const saved: boolean = await saveElectricityRoom(params['roomQuery'] as string)
+        if (!saved && this.alive && version === this.requestVersion && epoch === getCacheEpoch() && username === getUsername()) {
+          this.errorMsg = '电量已查询，宿舍绑定未保存，请稍后重新查询'
+        }
+      } catch (_error) {
         if (this.alive && version === this.requestVersion && epoch === getCacheEpoch() && username === getUsername()) {
           this.errorMsg = '电量已查询，宿舍绑定未保存，请稍后重新查询'
         }
@@ -314,8 +320,10 @@ struct ElectricityPage {
         .alignItems(HorizontalAlign.Center)
       } else if (this.step === 4) {
         Column() {
+          // 这里只是"请求已提交"，不是支付成功。用强调色或粗体渲染会让用户
+          // 把这一屏读成结果页，所以按正文样式呈现，判断留给一卡通账户。
           Text(this.resultMsg)
-            .fontSize(18).fontWeight(FontWeight.Bold).fontColor(getColors(this.isDark).success)
+            .fontSize(16).fontWeight(FontWeight.Normal).fontColor(getColors(this.isDark).onSurface)
             .margin({ top: 60 })
           Button('回到首页')
             .width('90%').height(48).backgroundColor(getColors(this.isDark).primary).borderRadius(16)

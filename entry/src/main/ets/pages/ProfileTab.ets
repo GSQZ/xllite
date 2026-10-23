@@ -114,7 +114,11 @@ export struct ProfileTab {
       .fontColor(this.themeMode === mode ? this.palette.onPrimary : this.palette.onSurfaceVariant)
       .backgroundColor(this.themeMode === mode ? this.palette.primary : this.palette.surfaceVariant)
       .borderRadius(12)
-      .onClick(() => { setThemeMode(mode).catch((_e: Error) => {}) })
+      .onClick(() => {
+        setThemeMode(mode).then((saved: boolean) => {
+          if (!saved) safeToast(this.getUIContext(), '主题已切换，但未能保存，重启后会恢复原设置')
+        }).catch((_e: Error) => {})
+      })
   }
 
   avatarText(): string {
@@ -207,7 +211,11 @@ export struct ProfileTab {
                   Text('减少界面动画，操作更直接').fontSize(12).fontColor(this.palette.onSurfaceVariant)
                 }.alignItems(HorizontalAlign.Start).layoutWeight(1)
                 Toggle({ type: ToggleType.Switch, isOn: this.reduceMotion }).selectedColor(this.palette.primary)
-                  .accessibilityText('减少动效').onChange((enabled: boolean) => { setReduceMotion(enabled) })
+                  .accessibilityText('减少动效').onChange((enabled: boolean) => {
+                    setReduceMotion(enabled).then((saved: boolean) => {
+                      if (!saved) safeToast(this.getUIContext(), '已切换，但未能保存，重启后会恢复原设置')
+                    }).catch((_e: Error) => {})
+                  })
               }.width('100%')
             }
           }.width('100%')
@@ -217,7 +225,7 @@ export struct ProfileTab {
           Text('掌上新理工 · 1.0.0').fontSize(12).fontColor(this.palette.onSurfaceVariant)
         }
           .width('100%')
-          .padding({ left: 20, right: 20, top: 4, bottom: this.safeAreaBottom + 88 })
+          .padding({ left: 20, right: 20, top: 4, bottom: this.safeAreaBottom + 104 })
       }.layoutWeight(1).width('100%').scrollBar(BarState.Off)
     }.width('100%').height('100%').backgroundColor(Color.Transparent)
   }

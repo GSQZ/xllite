@@ -17,7 +17,6 @@ export const FEATURES: FeatureDef[] = [
   { name: 'jw.grades', title: '成绩查询', system: 'jw', icon: '绩', page: 'GradesPage' },
   { name: 'jw.exams', title: '考试安排', system: 'jw', icon: '考', page: 'ExamsPage' },
   { name: 'jw.profile', title: '个人信息', system: 'jw', icon: '人', page: 'ProfilePage' },
-  { name: 'jw.training', title: '培养方案', system: 'jw', icon: '培', page: 'TrainingPage' },
   { name: 'local.todos', title: '待办任务', system: 'local', icon: '办', page: 'TodoPage' },
 ]
 

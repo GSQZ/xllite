@@ -14,7 +14,9 @@ function fixture() {
   let nextFile = 1, nextReminder = 1, timer = 1;
   const state = { bundleName: 'com.xjit.app', now: new Date(2026, 9, 12, 7, 45).getTime(), reminders: new Map(), requests: [],
     cancelAll: 0, forms: [], widgetUpdates: [], liveStarts: [], liveUpdates: [], liveStops: [],
-    notificationAllowed: true, liveAllowed: true, liveCode: 0, liveError: null, publishHook: null, stopFail: false };
+    notificationAllowed: true, liveAllowed: true, liveCode: 0, liveError: null, publishHook: null, stopFail: false,
+    // Default to the HarmonyOS 6.0 API level so the dynamic-island branches are exercised.
+    sdkApiVersion: 20, logs: [] };
   class Clock extends Date { constructor(...args) { if (!args.length) super(state.now); else super(...args); } static now() { return state.now; } }
   const preferences = { async getPreferences(_ctx, name) {
     if (!stores.has(name)) stores.set(name, new Map()); const store = stores.get(name);
@@ -39,7 +41,7 @@ function fixture() {
       state.liveStarts.push(JSON.parse(JSON.stringify(view))); if(state.liveError) throw state.liveError;
       return {resultCode:state.liveCode,message:'mock'};
     }, async updateLiveView(view){state.liveUpdates.push(JSON.parse(JSON.stringify(view)));if(state.updateError)throw state.updateError;return {resultCode:state.updateCode||0,message:'mock'};},
-    async stopLiveView(view){state.liveStops.push(JSON.parse(JSON.stringify(view))); if(state.stopHook)await state.stopHook(); if(state.stopFail) throw {code:1003500003}; return {resultCode:0,message:'mock'};}};
+    async stopLiveView(view){state.liveStops.push(JSON.parse(JSON.stringify(view))); if(state.stopHook)await state.stopHook(); if(state.stopFail) throw {code:state.stopFailCode||1003500003}; return {resultCode:0,message:'mock'};}};
   const formKit = {formBindingData:{createFormBindingData:data=>({data})}, formProvider:{async getPublishedRunningFormInfos(){return state.forms;},
     async updateForm(id,data){state.widgetUpdates.push({id,...data});}}};
   const wantAgent = {OperationType:{START_ABILITY:0}, WantAgentFlags:{UPDATE_PRESENT_FLAG:0}, async getWantAgent(options){return {options};}};
@@ -47,10 +49,17 @@ function fixture() {
     const full = path.resolve(root,rel); if(modules.has(full)) return modules.get(full).exports;
     const module={exports:{}}; modules.set(full,module);
     const js=ts.transpileModule(fs.readFileSync(full,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText;
+    // hilog 必须给全 debug/info/warn/error：Logger 封装会按级别分派，
+    // 兜底的空对象会让服务层一打日志就抛 TypeError。
+    const hilog = { debug(){state.logs.push(['debug',...arguments]);},
+      info(){state.logs.push(['info',...arguments]);},
+      warn(){state.logs.push(['warn',...arguments]);},
+      error(){state.logs.push(['error',...arguments]);} };
     const requireLocal = spec => {
       const native = {'@ohos.data.preferences':preferences,'@ohos.file.fs':nativeFs,'@ohos.notificationManager':notification,
-        '@ohos.reminderAgentManager':reminder,'@ohos.app.ability.wantAgent':wantAgent};
+        '@ohos.reminderAgentManager':reminder,'@ohos.app.ability.wantAgent':wantAgent,'@ohos.hilog':hilog};
       if(native[spec]) return {default:native[spec]};
+      if(spec==='@ohos.deviceInfo') return {default:{sdkApiVersion:state.sdkApiVersion}};
       if(spec==='@kit.LiveViewKit') return {liveViewManager}; if(spec==='@kit.FormKit') return formKit;
       if(spec.startsWith('@ohos.')) return {default:{}};
       return load(path.relative(root,path.resolve(path.dirname(full),spec+'.ets')));
@@ -111,6 +120,20 @@ test('todo reminder service registers native todo routes and preserves courses',
  assert.equal(f.state.requests.at(-1).groupId,'campus_todos');assert.equal(f.state.requests.at(-1).wantAgent.parameters.campusRoute,'todo');assert.equal(f.state.reminders.has(9999),true);
  f.state.publishHook=async()=>{throw new Error('fixture publication failed')};await assert.rejects(service.syncTodoReminders([item],'com.xjit.app.acceptance'),/publication failed/);assert.equal(f.state.reminders.size,1);
 });
+ test('a reminder published during logout is withdrawn again',async()=>{
+  // publishReminder 是异步的：版本检查通过到真正登记完成之间用户可能已登出，
+  // 而登出时的 cancelReminderGroup 早已跑完。不补一次撤销，这条提醒会留在系统里，
+  // 下一个账号登录后照常弹出。
+  const f=fixture(),service=f.get('services/TodoReminderService'),due=f.clock.now()+3600000;
+  const item={id:'task',title:'Study',note:'',dueText:'',dueAt:due,done:false,createdAt:1,updatedAt:1};
+  let logoutStarted=false;
+  // 只触发登出，不 await：clearTodoReminders 的取消任务排在同一个队列后面，
+  // 在 publishHook 里等它完成会互相等待。版本号是同步递增的，足以让本次登记作废。
+  f.state.publishHook=async()=>{ if(!logoutStarted){ logoutStarted=true; service.clearTodoReminders().catch(()=>{}); } };
+  const count=await service.syncTodoReminders([item],'com.xjit.app.acceptance');
+  assert.equal(count,0,'a publication interrupted by logout must not report success');
+  assert.equal(f.state.reminders.size,0,'no reminder may survive the logout');
+ });
 test('todo publication plus rollback failure retains both diagnostic causes',async()=>{
  const f=fixture(),service=f.get('services/TodoReminderService'),due=f.clock.now()+3600000;
  const item=id=>({id,title:id,note:'',dueText:'',dueAt:due,done:false,createdAt:1,updatedAt:1});let calls=0;
@@ -424,7 +447,7 @@ test('system reminder quota preserves already registered courses',async()=>{
  let attempts=0;f.state.publishHook=async()=>{if(++attempts>1)throw {code:1700002};};
  await core.setCampusOption('reminders',true);
  assert.equal(f.state.reminders.size,1);assert.equal(f.values.get('courseReminderEnabled'),true);
- assert.match(f.values.get('courseReminderStatus'),/系统提醒受限（1700002）：SDK定义为提醒数量超限，实际限制来源待核实/);
+   assert.match(f.values.get('courseReminderStatus'),/系统提醒条数已达上限/);
  assert.ok(!f.values.get('courseReminderStatus').includes('检查通知权限'));
 });
 test('quota status uses native reminder count without assuming zero on query failure',async()=>{
@@ -463,11 +486,83 @@ test('real LiveView payload uses TIMER and millisecond duration',async()=>{
  assert.equal(f.state.liveStarts.length,1);const view=f.state.liveStarts[0];assert.equal(view.event,'TIMER');assert.equal(view.timer.time,9*60000);
  assert.equal(view.liveViewData.capsule.type,2);assert.equal(view.liveViewData.primary.clickAction.options.wants[0].parameters.campusRoute,'schedule');
 });
-test('enabled LiveView distinguishes waiting, empty day and active countdown from disabled state',async()=>{
+test('HarmonyOS 6.0 live view carries the dynamic island tail affordances',async()=>{
+ const f=fixture();f.state.sdkApiVersion=20;f.state.now=new Date(2026,9,12,9,51).getTime();
+ const core=await readyCourse(f);await core.setCampusOption('live',true);
+ const capsule=f.state.liveStarts[0].liveViewData.capsule;
+ assert.equal(capsule.icon,'liveview_capsule.png');
+ assert.equal(capsule.tailIcon,'liveview_capsule.png');
+ assert.equal(capsule.isContentDisplayed,true);
+ assert.equal(capsule.isTailIconDisplayed,true);
+});
+test('live view before API 20 omits only the tail members that do not exist yet',async()=>{
+ // The tail affordances (tailIcon, isTailIconDisplayed) are @since 6.0.0(20);
+ // the plain capsule icon is @since 4.1.0(11) and stays available below that.
+ const f=fixture();f.state.sdkApiVersion=19;f.state.now=new Date(2026,9,12,9,51).getTime();
+ const core=await readyCourse(f);await core.setCampusOption('live',true);
+ const capsule=f.state.liveStarts[0].liveViewData.capsule;
+ assert.equal(capsule.tailIcon,undefined);
+ assert.equal(capsule.isTailIconDisplayed,undefined);
+ assert.notEqual(capsule.icon,undefined);
+ assert.equal(capsule.isContentDisplayed,true);
+});
+test('live view fixed area uses the system timer placeholder so the island ticks itself',async()=>{
+ const f=fixture();f.state.now=new Date(2026,9,12,9,51).getTime();
+ const core=await readyCourse(f);await core.setCampusOption('live',true);
+ const content=f.state.liveStarts[0].liveViewData.primary.content;
+ // The placeholder must sit inside a single text string. The system resolves it
+ // per string; a separate array entry has no timer context to resolve against and
+ // renders as unresolved text instead of the remaining time.
+ assert.equal(content.length,1,'the fixed area must carry exactly one text entry');
+ assert.ok(content[0].text.includes('${placeholder.timer}'),'the placeholder must be present');
+ assert.ok(content[0].text.length<128,'the text must stay within the 128 character limit');
+});
+test('the timer placeholder is never a standalone content entry',async()=>{
+ const f=fixture();f.state.now=new Date(2026,9,12,9,51).getTime();
+ const core=await readyCourse(f);await core.setCampusOption('live',true);
+ const content=f.state.liveStarts[0].liveViewData.primary.content;
+ for(const part of content){
+  assert.ok(!/^\s*\$\{placeholder\.timer\}\s*$/.test(part.text),'the placeholder must not stand alone');
+ }
+});
+test('the countdown reaches a preset ending instead of a raw zero',async()=>{
+ const f=fixture();f.state.sdkApiVersion=26;f.state.now=new Date(2026,9,12,9,51).getTime();
+ const core=await readyCourse(f);await core.setCampusOption('live',true);
+ const timer=f.state.liveStarts[0].timer;
+ assert.ok(timer.countdownPreset,'a preset ending is required from API 20');
+ assert.ok(timer.countdownPreset.presetTitle.length>0);
+ assert.ok(timer.countdownPreset.presetContent.length>0);
+ assert.ok(timer.capsuleCountdownPreset,'the capsule needs its own preset ending');
+});
+test('capsule keeps its island affordances when the course switches to 上课中',async()=>{
+ const f=fixture();f.state.sdkApiVersion=20;f.state.now=new Date(2026,9,12,9,51).getTime();
+ f.values.set('liveViewEnabled',true);
+ const live=f.get('services/LiveViewService');
+ const start=f.state.now+60000;
+ const target={type:'course',title:'算法',text:'1-2节',extra:'B306',startTime:start,endTime:start+3600000};
+ await live.startLiveView(target);
+ assert.equal(f.state.liveStarts.length,1);
+ assert.equal(f.state.liveStarts[0].liveViewData.capsule.content,'距上课');
+ // The clock moves past the class start while the target identity stays the same,
+ // so the service must flip the existing capsule instead of recreating the view.
+ f.state.now=start+1000;
+ await live.startLiveView(target);
+ assert.equal(f.state.liveUpdates.length,1);
+ assert.equal(f.state.liveStops.length,0,'a running island must not be torn down at class start');
+ const updated=f.state.liveUpdates[0].liveViewData.capsule;
+ assert.equal(updated.content,'上课中');
+ assert.equal(updated.icon,'liveview_capsule.png');
+ assert.equal(updated.tailIcon,'liveview_capsule.png');
+ assert.equal(updated.isTailIconDisplayed,true);
+});
+test('enabled LiveView registers the next class immediately instead of waiting for a ten-minute gate',async()=>{
  const f=fixture(),core=await readyCourse(f);await core.setCampusOption('live',true);
- assert.equal(f.state.liveStarts.length,0);assert.equal(f.values.get('liveViewStatus'),'已开启，等待进入课前 10 分钟');
+ // 系统触发式实况窗只支持地理围栏、没有时间触发，所以"到点自动弹"在 API 23/24 上
+ // 做不到。改成当天有课就登记，倒计时一路走到上课，用户不必卡着课前十分钟再开 App。
+ assert.equal(f.state.liveStarts.length,1);
+ assert.match(String(f.values.get('liveViewStatus')),/^实况窗已显示/);
  f.state.now=new Date(2026,9,12,9,51).getTime();await core.activateCampusCompanion('test-student');
- assert.equal(f.state.liveStarts.length,1);assert.equal(f.values.get('liveViewStatus'),'实况窗已显示');
+ assert.equal(f.state.liveStarts.length,1);assert.match(String(f.values.get('liveViewStatus')),/^实况窗已显示/);
  f.state.now=new Date(2026,9,12,12,0).getTime();await core.activateCampusCompanion('test-student');
  assert.equal(f.state.liveStops.length,1);assert.equal(f.values.get('liveViewStatus'),'已开启，今天暂无后续课程');
  await core.setCampusOption('live',false);assert.equal(f.values.get('liveViewStatus'),'已关闭课程实况窗');
@@ -560,6 +655,85 @@ test('queued live view target preserves caller snapshot',async()=>{
  const f=fixture();f.values.set('liveViewEnabled',true);const live=f.get('services/LiveViewService');const target={type:'todo',title:'Original',text:'',extra:'',startTime:f.clock.now(),endTime:f.clock.now()+3600000};
  const pending=live.startLiveView(target);target.endTime=0;const result=await pending;assert.equal(result.ok,true);assert.equal(f.state.liveStarts.length,1);
 });
+test('capsule members are gated by the API level that introduced them',async()=>{
+ // icon is @since 11, isContentDisplayed @since 15, tailIcon / isTailIconDisplayed @since 20.
+ const expected={11:{icon:true,isContentDisplayed:false,tailIcon:false},
+  15:{icon:true,isContentDisplayed:true,tailIcon:false},
+  20:{icon:true,isContentDisplayed:true,tailIcon:true},
+  26:{icon:true,isContentDisplayed:true,tailIcon:true}};
+ for(const [api,want] of Object.entries(expected)){
+  const f=fixture();f.state.sdkApiVersion=Number(api);f.values.set('liveViewEnabled',true);
+  const live=f.get('services/LiveViewService');
+  await live.startLiveView({type:'todo',title:'Study',text:'',extra:'',startTime:f.clock.now(),endTime:f.clock.now()+3600000});
+  const c=f.state.liveStarts[0].liveViewData.capsule;
+  assert.equal(c.icon!==undefined,want.icon,`api ${api} icon`);
+  assert.equal(c.isContentDisplayed!==undefined,want.isContentDisplayed,`api ${api} isContentDisplayed`);
+  assert.equal(c.tailIcon!==undefined,want.tailIcon,`api ${api} tailIcon`);
+  assert.equal(c.isTailIconDisplayed!==undefined,want.tailIcon,`api ${api} isTailIconDisplayed`);
+ }
+});
+test('live view timer is only set on API 12 and above',async()=>{
+ for(const [api,wantTimer] of [[11,false],[12,true],[26,true]]){
+  const f=fixture();f.state.sdkApiVersion=Number(api);f.values.set('liveViewEnabled',true);
+  const live=f.get('services/LiveViewService');
+  await live.startLiveView({type:'todo',title:'Study',text:'',extra:'',startTime:f.clock.now(),endTime:f.clock.now()+3600000});
+  assert.equal(f.state.liveStarts[0].timer!==undefined,wantTimer,`api ${api} timer`);
+ }
+});
+test('a refused live view update rolls the system version back',async()=>{
+ const f=fixture();f.state.sdkApiVersion=26;f.values.set('liveViewEnabled',true);
+ const live=f.get('services/LiveViewService');
+ const started=await live.startCourseLiveView(course(),f.clock.now(),f.clock.now()+3600000);
+ const created=f.state.liveStarts[0].sequence;
+ // The system refuses the update, so its own version stays where it was.
+ f.state.updateCode=1;
+ await assert.rejects(live.updateLiveView(started.handle,course(),f.clock.now()));
+ f.state.updateCode=0;
+ // A later retry must still be accepted, which requires the local counter to be
+ // back in step with the system instead of having skipped a version.
+ await live.updateLiveView(started.handle,course({title:'Retried'}),f.clock.now());
+ assert.equal(f.state.liveUpdates[0].sequence,created+1,'retry must reuse the next version');
+});
+ test('a stop that reports already ended is treated as done, not retried forever',async()=>{
+  // 1003500009 表示实况窗不存在、1003500010 表示已结束。这两种情况下系统侧
+  // 本来就没有窗口了，若当成普通失败回滚并抛错，本地会一直卡在一个已经不存在的
+  // 窗口上，每次登出都重试一遍。
+  for(const code of [1003500009,1003500010]){
+     const f=fixture();f.state.sdkApiVersion=26;f.values.set('liveViewEnabled',true);
+     const live=f.get('services/LiveViewService');
+   const started=await live.startCourseLiveView(course(),f.clock.now(),f.clock.now()+3600000);
+   f.state.stopFail=true;f.state.stopFailCode=code;
+   await live.finishLiveView(started.handle);
+   assert.equal(live.getCurrentHandle(),null,'the local handle must be released for '+code);
+   f.state.stopFail=false;f.state.stopFailCode=undefined;
+  }
+ });
+test('a refused live view stop rolls the system version back',async()=>{
+ const f=fixture();f.state.sdkApiVersion=26;f.values.set('liveViewEnabled',true);
+ const live=f.get('services/LiveViewService');
+ const started=await live.startCourseLiveView(course(),f.clock.now(),f.clock.now()+3600000);
+ const created=f.state.liveStarts[0].sequence;
+ f.state.stopFail=true;
+ await assert.rejects(live.finishLiveView(started.handle));
+ f.state.stopFail=false;
+ await live.finishLiveView(started.handle);
+ assert.equal(f.state.liveStops[0].sequence,created+1,'a retried stop must reuse the next version');
+});
+test('the class-start transition rolls the system version back when refused',async()=>{
+ const f=fixture();f.state.sdkApiVersion=26;f.values.set('liveViewEnabled',true);
+ const live=f.get('services/LiveViewService');
+ const start=f.clock.now()+60000;
+ const target={type:'course',title:'算法',text:'1-2节',extra:'B306',startTime:start,endTime:start+3600000};
+ await live.startLiveView(target);
+ const created=f.state.liveStarts[0].sequence;
+ f.state.now=start+1000;
+ f.state.updateCode=1;
+ await live.startLiveView(target);
+ f.state.updateCode=0;
+ f.state.now=start+2000;
+ await live.startLiveView(target);
+ assert.equal(f.state.liveUpdates[1].sequence,created+1,'the retry must not skip a version');
+});
 test('todo live target uses structured deadline rather than fabricated one hour',()=>{
  const f=fixture(),live=f.get('services/LiveViewService'),item={id:'task',title:'Study',note:'',dueText:'',dueAt:f.clock.now()+7200000,done:false,createdAt:1,updatedAt:1};
  assert.equal(live.buildTodoLiveTarget(item).endTime,item.dueAt);
@@ -602,8 +776,8 @@ test('failed class-start transition remains retryable',async()=>{
 test('course LiveView changes timer at class start and stops on switch off',async()=>{
  const f=fixture();f.state.now=new Date(2026,9,12,9,51).getTime();const core=await readyCourse(f);await core.setCampusOption('live',true);
  f.state.now=new Date(2026,9,12,10,1).getTime();await core.activateCampusCompanion('test-student');assert.equal(f.state.liveUpdates.length,1);
- assert.equal(f.state.liveUpdates[0].liveViewData.capsule.content,'上课中');assert.equal(f.values.get('liveViewStatus'),'实况窗已显示');
- await core.activateCampusCompanion('test-student');assert.equal(f.values.get('liveViewStatus'),'实况窗已显示');
+ assert.equal(f.state.liveUpdates[0].liveViewData.capsule.content,'上课中');assert.match(String(f.values.get('liveViewStatus')),/^实况窗已显示/);
+ await core.activateCampusCompanion('test-student');assert.match(String(f.values.get('liveViewStatus')),/^实况窗已显示/);
  await core.setCampusOption('live',false);assert.equal(f.state.liveStops.length,1);
 });
 test('logout reminder cancellation failure keeps widget private and allows group-specific retry',async()=>{
@@ -625,7 +799,54 @@ test('combined logout failures still cancel reminders and recover on retry',asyn
  f.state.stopFail=true;f.state.writeFail=true;await assert.rejects(core.clearCampusCompanion());assert.equal(f.state.reminders.size,0);assert.equal(f.values.get('courseReminderEnabled'),false);assert.equal(f.values.get('liveViewEnabled'),false);
  f.state.stopFail=false;f.state.writeFail=false;await core.clearCampusCompanion();assert.equal(f.disks.get('/data/campus_widget.json'),'null');assert.equal(f.state.liveStops.length,2);
 });
+ test('live view state changes reach the device log',async()=>{
+  // 实况窗成败只能看系统侧反应，真机验收靠这条日志判断走到哪一步，
+  // 所以状态变更必须真的落一条 hilog，而不是只存在内存里。
+  const f=fixture();f.state.now=new Date(2026,9,12,9,51).getTime();
+  const core=await readyCourse(f);await core.setCampusOption('live',true);
+  const entries=f.state.logs.filter(entry=>entry[0]==='info'&&String(entry[2]).includes('LiveView'));
+  assert.ok(entries.length>0,'live view state change must be logged');
+  const payload=entries.map(entry=>String(entry[3])).join(' ');
+  assert.match(payload,/api=|status=/, 'the log must carry the api level and the state text');
+ });
+ test('disabled live view switch never starts a surface',async()=>{
+  const f=fixture();f.state.liveAllowed=false;f.state.now=new Date(2026,9,12,9,51).getTime();
+  const core=await readyCourse(f);await assert.rejects(core.setCampusOption('live',true));
+  assert.equal(f.state.liveStarts.length,0);
+  const logged=f.state.logs.filter(entry=>String(entry[2]).includes('LiveView'));
+  assert.ok(logged.length>0,'the refusal reason must be logged as well');
+ });
 test('failed LiveView stop reports logout failure after privacy and reminder cleanup',async()=>{
+ test('api level normalises the eight-digit encoding instead of trusting it raw',async()=>{
+ test('reminder group names come from one constant, never a fresh literal',()=>{
+ test('course reminders are cancelled by group, never by a stored id list',()=>{
+  // reminderIds 曾经每登记一条就写盘 flush 一次（最多 24 次），但从没被读过：
+  // 取消一律按 groupId 枚举。留着实属只写不读的死数据，回归钉住它不再出现。
+  const source=fs.readFileSync(path.join(root,'entry/src/main/ets/services/CampusCompanionService.ets'),'utf8');
+  assert.doesNotMatch(source,/reminderIds/);
+  assert.match(source,/cancelReminderGroup\(COURSE_REMINDER_GROUP\)/);
+ });
+  // 注册与取消各写字面量时，拼写差一个字符就一条都取消不掉，系统提醒会在
+  // 退出登录后继续弹给下一个账号。断言两侧都引用同一常量。
+  const groups=fs.readFileSync(path.join(root,'entry/src/main/ets/services/ReminderGroups.ets'),'utf8');
+  assert.match(groups,/export const COURSE_REMINDER_GROUP: string = 'campus_courses'/);
+  assert.match(groups,/export const TODO_REMINDER_GROUP: string = 'campus_todos'/);
+  for(const file of ['TodoReminderService.ets','CampusCompanionService.ets']){
+   const source=fs.readFileSync(path.join(root,'entry/src/main/ets/services/'+file),'utf8');
+   assert.doesNotMatch(source,/'campus_(?:todos|courses)'/,'no reminder literal may survive outside ReminderGroups');
+  }
+ });
+  // 6.1.0(23) 的编码形态是 60100023。若门槛写成 1e8，这个值会原样参与比较，
+  // 六千万对任何 api >= N 都成立，低版本设备就会拿到高版本字段。
+  for (const [raw, expected] of [[60100023, 23], [60260000, 0], [26, 26], [19, 19], [0, 0], [-1, 0]]) {
+   const f=fixture();f.state.sdkApiVersion=raw;f.state.now=new Date(2026,9,12,9,51).getTime();
+   const core=await readyCourse(f);await core.setCampusOption('live',true);
+   const view=f.state.liveStarts[0];
+   if (expected >= 20) { assert.ok(view.liveViewData.capsule.tailIcon,'API ' + expected + ' must carry the tail affordances'); }
+   else if (expected >= 12) { assert.ok(view.timer,'API ' + expected + ' must set the timer'); assert.equal(view.liveViewData.capsule.tailIcon,undefined); }
+   else { assert.equal(view.timer,undefined,'API ' + expected + ' must not set the timer'); }
+  }
+ });
  const f=fixture();const core=await readyCourse(f);await core.setCampusOption('reminders',true);f.state.now=new Date(2026,9,12,9,51).getTime();await core.setCampusOption('live',true);assert.equal(f.state.liveStarts.length,1);
  f.state.stopFail=true;await assert.rejects(core.clearCampusCompanion());assert.equal(f.state.reminders.size,0);assert.equal(f.disks.get('/data/campus_widget.json'),'null');
  f.state.stopFail=false;await core.clearCampusCompanion();assert.equal(f.state.liveStops.length,2);
@@ -633,5 +854,10 @@ test('failed LiveView stop reports logout failure after privacy and reminder cle
 (async()=>{
  const results=[];for(const {name,run} of cases){try{await run();results.push({name,ok:true});console.log('PASS '+name);}catch(error){results.push({name,ok:false,error:error.message});console.error('FAIL '+name+'\n'+error.stack);}}
  const failed=results.filter(r=>!r.ok);const report={checkedAt:new Date().toISOString(),networkUsed:false,nativeApisMocked:true,checks:results.length,failed:failed.length,results};
- fs.writeFileSync(path.join(root,'.wolf/campus-companion-checks.json'),JSON.stringify(report,null,2)+'\n');console.log(`${results.length} checks, ${failed.length} failed`);if(failed.length)process.exitCode=1;
+ // 快照被跟踪，结论没变就别换时间戳，否则每次跑测试都把工作区弄脏。
+ const snapshotPath=path.join(root,'.wolf/campus-companion-checks.json');
+ const previous=(()=>{try{return JSON.parse(fs.readFileSync(snapshotPath,'utf8'));}catch(_error){return null;}})();
+ const sameResult=previous!==null&&previous.checks===report.checks&&previous.failed===report.failed&&JSON.stringify(previous.results)===JSON.stringify(report.results);
+ if(sameResult)report.checkedAt=previous.checkedAt;
+ fs.writeFileSync(snapshotPath,JSON.stringify(report,null,2)+'\n');console.log(`${results.length} checks, ${failed.length} failed`);if(failed.length)process.exitCode=1;
 })();

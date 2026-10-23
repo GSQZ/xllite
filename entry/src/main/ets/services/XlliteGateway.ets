@@ -163,7 +163,7 @@ export async function gatewayRun(feature: string, accessToken: string,
   if (result.ok) {
     const collections: Record<string, string> = {
       'jw.schedule': 'courses', 'jw.grades': 'normalGrades', 'jw.exams': 'exams',
-      'jw.training': 'training', 'newcard.balance': 'accounts', 'newcard.transactions': 'transactions'
+      'newcard.balance': 'accounts', 'newcard.transactions': 'transactions'
     }
     const key: string = collections[feature]
     if (key !== undefined && !Array.isArray(result.data[key])) {
@@ -285,7 +285,7 @@ export async function logoutGatewayAccount(): Promise<void> {
 
 // 网关支持的 13 个 feature（与 xllite 仓库 XjitFeature 枚举一致）
 export const GATEWAY_FEATURE_NAMES: string[] = [
-  'jw.profile', 'jw.schedule', 'jw.grades', 'jw.exams', 'jw.training',
+  'jw.profile', 'jw.schedule', 'jw.grades', 'jw.exams',
   'newcard.balance', 'newcard.transactions', 'newcard.campus_code.qrcode',
   'newcard.recharge.config', 'newcard.recharge.create_order',
   'newcard.electricity.account', 'newcard.electricity.recharge.config',

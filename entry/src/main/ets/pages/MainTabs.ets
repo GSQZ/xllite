@@ -3,6 +3,7 @@ import { safePush } from '../utils/RouterHelper'
 import { HomeTab } from './HomeTab'
 import { ScheduleTab } from './ScheduleTab'
 import { ProfileTab } from './ProfileTab'
+import { TodoTab } from './TodoTab'
 import { BlurTabBar } from '../components/BlurTabBar'
 import { AmbientBackground } from '../components/AmbientBackground'
 import { getUsername } from '../services/AuthManager'
@@ -17,6 +18,7 @@ struct MainTabs {
   @State currentIndex: number = 0
   @State leavingTab: number = -1
   @State scheduleVisited: boolean = false
+  @State todoVisited: boolean = false
   @State profileVisited: boolean = false
   private leaveTimer: number = -1
   @StorageLink('isDark') isDark: boolean = false
@@ -26,7 +28,12 @@ struct MainTabs {
   private warmupStarted: boolean = false
   private alive: boolean = false
   private warmupTimer: number = -1
-  aboutToAppear(): void { this.alive = true; activateCampusCompanion(getUsername()).catch((_e: Error) => {}); this.applyRequestedRoute(); this.onActivityChange() }
+  aboutToAppear(): void {
+    this.alive = true
+    activateCampusCompanion(getUsername()).catch((_e: Error) => {})
+    this.applyRequestedRoute()
+    this.onActivityChange()
+  }
   onPageShow(): void { this.mainPageActive = true; this.applyRequestedRoute(); this.onActivityChange() }
   onPageHide(): void { this.mainPageActive = false; this.cancelWarmupTimer() }
   aboutToDisappear(): void {
@@ -57,13 +64,14 @@ struct MainTabs {
     if (!this.alive || !this.mainPageActive) return
     const route = this.campusRoute
     if (route === 'schedule') { this.campusRoute = ''; this.selectTab(1) }
-    else if (route === 'todo') { this.campusRoute = ''; safePush(this.getUIContext(), { url: 'pages/TodoPage' }) }
+    else if (route === 'todo') { this.campusRoute = ''; this.selectTab(2) }
   }
   private selectTab(index: number): void {
-    if (!Number.isInteger(index) || index < 0 || index > 2 || index === this.currentIndex) return
+    if (!Number.isInteger(index) || index < 0 || index > 3 || index === this.currentIndex) return
     const previous: number = this.currentIndex
     if (index === 1) this.scheduleVisited = true
-    if (index === 2) this.profileVisited = true
+    if (index === 2) this.todoVisited = true
+    if (index === 3) this.profileVisited = true
     // Keep the outgoing instance briefly; opacity switches instantly to avoid text ghosting.
     this.clearLeaveTimer()
     const duration: number = motionDuration(Motion.duration.fast)
@@ -93,29 +101,38 @@ struct MainTabs {
           .hitTestBehavior(this.currentIndex === 1 ? HitTestMode.Default : HitTestMode.None)
 
       }
-      if (this.profileVisited) {
-        ProfileTab({ active: this.currentIndex === 2 })
+      // 待办提为一级入口；成绩与财务留在首页「常用服务」里。
+      if (this.todoVisited) {
+        TodoTab()
           .visibility(this.tabVisible(2) ? Visibility.Visible : Visibility.Hidden)
           .opacity(this.currentIndex === 2 ? 1 : 0)
           .hitTestBehavior(this.currentIndex === 2 ? HitTestMode.Default : HitTestMode.None)
 
       }
-      // A separate passive scrim protects dock labels when scrolling text moves underneath.
-      // Keep custom backgrounds off the node that owns the native material.
+      if (this.profileVisited) {
+        ProfileTab({ active: this.currentIndex === 3 })
+          .visibility(this.tabVisible(3) ? Visibility.Visible : Visibility.Hidden)
+          .opacity(this.currentIndex === 3 ? 1 : 0)
+          .hitTestBehavior(this.currentIndex === 3 ? HitTestMode.Default : HitTestMode.None)
+
+      }
+      // 底部渐隐衬底。它必须留出可透光的余地：这层如果做实，导航栏的 backdropBlur
+      // 背后就没有任何内容可模糊，玻璃会退化成一块纯色板。
+      // 所以只压到 60% 左右，够保护文字，又不把背景挡死。
       Column()
         .width('100%').height(this.safeAreaBottom + 88)
         .linearGradient({ angle: 180,
           colors: this.isDark
-            ? [['#00152039', 0], ['#FF152039', 0.25], ['#FF152039', 1]]
-            : [['#00EAF0FB', 0], ['#FFEAF0FB', 0.25], ['#FFEAF0FB', 1]],
+            ? [['#00152039', 0], ['#66152039', 0.3], ['#99152039', 1]]
+            : [['#00EAF0FB', 0], ['#66EAF0FB', 0.3], ['#99EAF0FB', 1]],
         })
         .hitTestBehavior(HitTestMode.None)
       Column() {
         BlurTabBar({ currentIndex: this.currentIndex,
           onTabChange: (index: number) => { this.selectTab(index) } })
       }
+      // 左右贴边：栏本身占满宽度，圆角与底部避让都由组件内部处理。
       .width('100%')
-      .padding({ left: 24, right: 24, bottom: Math.max(0, this.safeAreaBottom - 8) })
       ThemeWash()
     }
     .width('100%').height('100%')
@@ -133,4 +150,3 @@ struct MainTabs {
   }
 
 }
-

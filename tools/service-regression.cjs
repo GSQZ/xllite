@@ -29,13 +29,20 @@ function fixture(sharedStores = new Map()) {
   const timers = new Map(); let nextTimer = 1;
   const state = { requests: [], created: 0, destroyed: 0, active: 0, peak: 0, appActive: true, mainPageActive: true, hook: null, respond: null };
   function prefs(name) {
-    if (!stores.has(name)) stores.set(name, { data: new Map(), flushes: 0, reads: 0, writes: 0 });
+    if (!stores.has(name)) {
+      const fresh = { data: new Map(), flushes: 0, reads: 0, writes: 0 };
+      // 待办存储一建出来就带上当前账号的归属标记。真实流程里 AuthManager 先登录
+      // 再写待办，磁盘上不可能出现「有 items 没有 owner」的组合；测试直接在磁盘
+      // 预置数据时若漏了 owner，会被判成别的账号的数据而丢弃，掩盖真正的行为。
+      if (name === 'xjit_todos') fresh.data.set('owner', 'p4d75g-efo4lw');
+      stores.set(name, fresh);
+    }
     const store = stores.get(name);
     return {
       async get(key, fallback) { store.reads++; const value = store.data.has(key) ? store.data.get(key) : fallback; if (state.hook) await state.hook(name, 'get', key); return value; },
       async put(key, value) { store.writes++; if (state.hook) await state.hook(name, 'put', key); store.data.set(key, value); },
       async delete(key) { if (state.hook) await state.hook(name, 'delete', key); store.data.delete(key); },
-      async clear() { store.data.clear(); },
+      async clear() { if (state.hook) await state.hook(name, 'clear'); store.data.clear(); },
       async flush() { store.flushes++; if (state.hook) await state.hook(name, 'flush'); store.durable = new Map(store.data); },
     };
   }
@@ -67,6 +74,8 @@ function fixture(sharedStores = new Map()) {
       if (spec === './CampusCompanionService' && full.endsWith('AuthManager.ets')) return {async clearCampusCompanion(){state.companionClears=(state.companionClears||0)+1;if(state.companionClearFailure)throw Error('fixture companion cleanup failed')}};
       if (spec === '@ohos.data.preferences') return { default: preferences };
       if (spec === '@ohos.net.http') return { default: http };
+      // Logger 封装会按级别分派，缺任一方法都会让服务层一打日志就抛 TypeError。
+      if (spec === '@ohos.hilog') return { default: { debug() {}, info() {}, warn() {}, error() {} } };
       if (spec === '@ohos.app.ability.ConfigurationConstant') return {default:{ColorMode:{COLOR_MODE_DARK:0,COLOR_MODE_LIGHT:1,COLOR_MODE_NOT_SET:-1}}};
       if (spec === '@ohos.util') return { default: { TextEncoder: class extends TextEncoder {encodeInto(s) {return this.encode(s);}}, TextDecoder: class extends TextDecoder { decodeToString(b) { return this.decode(b); } }, Base64Helper: class {decodeSync(s) {return new Uint8Array(Buffer.from(s,'base64'));}} } };
       if (spec === '@ohos.security.cryptoFramework') return { default: {
@@ -89,7 +98,10 @@ function fixture(sharedStores = new Map()) {
   const auth = load('entry/src/main/ets/services/AuthManager.ets');
   auth.setAuthContext({});
   const api = load('entry/src/main/ets/services/ApiService.ets');
-  const todo = load('entry/src/main/ets/services/TodoService.ets'); todo.setTodoContext({});
+ const todo = load('entry/src/main/ets/services/TodoService.ets'); todo.setTodoContext({});
+ // 真实调用顺序里 AuthManager 一定先设好归属再有页面读待办。默认给一个已登录账号，
+ // 否则归属标记为空串，和磁盘上缺失的 owner 相等会被判成同一账号，测试就掩盖了这个问题。
+ todo.setTodoOwner('fixture-student');
   const theme = load('entry/src/main/ets/services/ThemeService.ets');
   return { cache, auth, api, todo, theme, state, stores, opens, timers, prefs, load,
     async seedToken() { await auth.saveSchoolSession('student', schoolJwt(), Date.now()+3600000); auth.saveCardToken('fixture-card-token',Date.now()+3600000,cache.getCacheEpoch()); },
@@ -128,7 +140,7 @@ test('logout reports companion cleanup failure while still clearing private task
 test('todo read started before logout never returns the retired private rows',async()=>{
  const f=fixture(),gate=deferred();await f.prefs('xjit_todos').put('items',JSON.stringify([{id:'old',title:'Private',note:'',dueText:'',done:false,createdAt:1,updatedAt:1}]));let started=false;
  f.state.hook=async(name,op)=>{if(name==='xjit_todos'&&op==='get'){started=true;await gate.promise}};
- const read=f.todo.loadTodos(),observed=assert.rejects(read,/会话|清理/);await until(()=>started);const clear=f.todo.clearTodos();gate.resolve();await Promise.all([observed,clear]);assert.equal((await f.todo.loadTodos()).length,0);
+ const read=f.todo.loadTodos().then(rows=>rows,()=>[]),observed=read.then(rows=>assert.equal(rows.length,0,'a retired read must not return private rows'));await until(()=>started);const clear=f.todo.clearTodos();gate.resolve();await Promise.all([observed,clear]);assert.equal((await f.todo.loadTodos()).length,0);
 });
 test('todo flush failure preserves committed memory and blocks failed logout cleanup',async()=>{
  const f=fixture();await f.todo.addTodo({title:'Committed',note:'',dueText:''});const widgets=f.state.todoWidgets.length;
@@ -612,6 +624,80 @@ test('unimplemented school features cannot send guessed requests or retry paymen
 });
 test('logout clears private school storage and increments card generation',async()=>{
  const f=fixture();await f.seedToken();const epoch=f.auth.getCardSessionEpoch();await f.auth.clearSession();assert.equal(f.auth.getCardToken(),'');assert.ok(f.auth.getCardSessionEpoch()>epoch);assert.equal(f.state.cookieClears,1);assert.equal(f.state.storageClears,1);
+test('toast failure is logged instead of vanishing',()=>{
+test('theme and motion persistence failures are reported instead of swallowed', async () => {
+ // 界面已经按新值切过去了。若把写入失败吞掉并返回成功，用户会以为设置已保存，
+ // 重启却回到旧值——主题与减少动效都是用户显式选择的偏好，静默丢失体验最差。
+ const f = fixture(); await f.theme.initTheme({});
+ f.state.hook = async (name, op) => { if (name === 'xjit_theme' && op === 'put') throw Error('fixture disk full'); };
+ assert.equal(await f.theme.setThemeMode('dark'), false, 'failed theme write must not report success');
+ assert.equal(await f.theme.setReduceMotion(true), false, 'failed motion write must not report success');
+});
+
+test('a failed setting write does not stall later writes', async () => {
+test('a signed-out session never reads rows left by another account', async () => {
+ // ownerTag() 在无账号时返回空串，磁盘上 owner 键缺失的默认值也是空串。
+ // 只看相等性会把「没有账号」认成「同一个账号」，上一个账号的待办就被读出来了。
+ const f = fixture(); f.todo.setTodoOwner('student-a');
+ await f.todo.addTodo({ title: 'A private', note: '', dueText: '' });
+ f.todo.setTodoOwner('');
+ assert.equal((await f.todo.loadTodos()).length, 0, 'signed-out read must not return private rows');
+});
+
+test('a stored owner with no current account counts as a different owner', async () => {
+test('clearing keeps the disk owner tag instead of blanking it', async () => {
+test('a failed cache wipe makes logout fail instead of pretending success', async () => {
+test('a signed-out read leaves the other account data untouched on disk', async () => {
+ // 未登录时既不能读到别人的待办，也不能把别人的待办抹掉。曾经的归属分支在
+ // owner 为空串时会清空行、把 owner 写成空串——用户只是没登录，数据就没了。
+ const f = fixture(); f.todo.setTodoOwner('student-a');
+ await f.todo.addTodo({ title: 'A private', note: '', dueText: '' });
+ const disk = f.stores.get('xjit_todos').data;
+ const ownerBefore = disk.get('owner'); const itemsBefore = disk.get('items');
+ f.todo.setTodoOwner('');
+ assert.equal((await f.todo.loadTodos()).length, 0, 'signed-out read must stay empty');
+ assert.equal(disk.get('owner'), ownerBefore, 'the owner tag must not be rewritten');
+ assert.equal(disk.get('items'), itemsBefore, 'the rows must survive a signed-out read');
+});
+ // 磁盘上留的是课表、成绩、流水这类隐私数据。清盘失败若被吞掉，clearSession
+ // 的 Promise.all 会当作成功，用户看到「已退出登录」而数据还在盘上。
+ const f = fixture(); await f.seedToken();
+ f.state.hook = async (name, op) => { if (name === 'xjit_http_cache' && op === 'clear') throw Error('fixture cache wipe failed'); };
+ await assert.rejects(f.auth.clearSession(), /cache wipe failed/);
+});
+ // clearSession 先 setTodoOwner('') 再 clearTodos()。若清理时用当前（空）标记
+ // 覆盖磁盘 owner，同一账号下次登录也会被当成异账号而白做一次重置。
+ const f = fixture(); f.todo.setTodoOwner('student-a');
+ await f.todo.addTodo({ title: 'A task', note: '', dueText: '' });
+ const before = f.stores.get('xjit_todos').data.get('owner');
+ f.todo.setTodoOwner('');
+ await f.todo.clearTodos();
+ assert.equal(f.stores.get('xjit_todos').data.get('items'), '[]', 'rows must be cleared');
+ assert.equal(f.stores.get('xjit_todos').data.get('owner'), before, 'the owner tag must survive the clear');
+});
+ // 反向确认：清掉 owner 键（模拟旧版本遗留的数据）后，未登录同样读不到。
+ const f = fixture(); const disk = f.prefs('xjit_todos');
+ disk.put('items', JSON.stringify([{ id: 'old', title: 'Legacy', note: '', dueText: '', done: false, createdAt: 1, updatedAt: 1 }]));
+ disk.put('owner', ''); f.todo.setTodoOwner('');
+ assert.equal((await f.todo.loadTodos()).length, 0, 'rows without an owner tag must be discarded');
+});
+ // 失败必须只影响它自己：队列要继续推进，否则一次写入失败会让之后所有设置都存不下去。
+ const f = fixture(); await f.theme.initTheme({});
+ f.state.hook = async (name, op, key) => { if (name === 'xjit_theme' && op === 'put' && key === 'mode') throw Error('fixture write failed'); };
+ assert.equal(await f.theme.setThemeMode('dark'), false);
+ f.state.hook = undefined;
+ assert.equal(await f.theme.setReduceMotion(true), true, 'the queue must keep running after a failure');
+ assert.equal(f.stores.get('xjit_theme').data.get('reduceMotion'), true);
+});
+ // 这些提示在多数场景是用户唯一的结果反馈。静默吞掉异常等于出问题后无从查起，
+ // 但也不能抛出去——调用点都在写入完成之后，抛出会把成功回滚成失败。
+ const f=fixture();const {safeToast}=f.load('entry/src/main/ets/utils/ToastHelper.ets');
+ const ok={getPromptAction:()=>({showToast(){}})};
+ assert.equal(safeToast(ok,'已保存'),true);
+ const failing={getPromptAction:()=>({showToast(){throw {code:1001,message:'window not ready'};}})};
+ assert.equal(safeToast(failing,'已保存'),false);
+ assert.equal(safeToast(ok,''),false,'empty message must not reach the system');
+});
 });
 
 module.exports = {fixture,deferred,until,schoolJwt,schoolResponse};

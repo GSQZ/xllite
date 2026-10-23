@@ -22,7 +22,6 @@ function shouldCacheFeature(feature: string): boolean {
     feature === 'jw.profile' ||
     feature === 'jw.grades' ||
     feature === 'jw.exams' ||
-    feature === 'jw.training' ||
     feature === 'newcard.balance' ||
     feature === 'newcard.transactions' ||
     feature === 'newcard.electricity.account'

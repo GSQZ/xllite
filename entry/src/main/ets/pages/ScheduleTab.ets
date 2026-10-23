@@ -64,6 +64,7 @@ export struct ScheduleTab {
   private restoredWeek: number = 0
   @StorageLink('scheduleWeekKnown') weekKnown: boolean = false
   @StorageLink('liveViewEnabled') liveEnabled: boolean = false
+  @StorageLink('liveViewStatus') liveStatus: string = '未开启'
   @StorageLink('currentWeek') currentWeek: number = 1
   @StorageLink('totalWeeks') @Watch('updateDerived') totalWeeks: number = 20
   @StorageLink('isDark') @Watch('onThemeChange') isDark: boolean = false
@@ -408,6 +409,22 @@ export struct ScheduleTab {
                 onTapNavigate: (loc: string) => { navToMap(loc, this.getUIContext()) },
               })
               .padding({ left: 16, right: 16, top: 2, bottom: 8 })
+            }
+
+            // 实况窗状态条。真机上最常问的是"我开了开关，胶囊怎么没出现"——
+            // 原因可能是系统开关没开、场景权益没批、还没进入课前十分钟，也可能是
+            // 载荷被拒。这些只在设置页能看到，而用户是在课表页等结果的。
+            if (this.liveEnabled && this.liveStatus.length > 0 && this.liveStatus !== '未开启') {
+              Row({ space: 8 }) {
+                Image($r('app.media.nav_calendar')).width(15).height(15)
+                  .fillColor(this.palette.primary)
+                Text(this.liveStatus).fontSize(12).lineHeight(18).layoutWeight(1)
+                  .fontColor(this.palette.onSurfaceVariant)
+              }
+              .width('100%').padding({ left: 16, right: 16, top: 10, bottom: 10 })
+              .margin({ left: 16, right: 16, bottom: 8 })
+              .borderRadius(12).backgroundColor(this.palette.surfaceVariant)
+              .accessibilityText('实况窗状态：' + this.liveStatus)
             }
           }
 

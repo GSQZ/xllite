@@ -199,6 +199,15 @@ struct RechargePage {
               this.openExternalScheme(target)
               return true
             })
+            // 收银台从右侧滑入、同时淡入，形成"换了一屏"的方向感——直接硬切会让
+            // 用户在输密码前不知道界面变了。进场用减速曲线（快入慢停），出场用加速
+            // 曲线，符合"东西被推着走"的直觉。减少动效偏好下两段时长都为 0。
+            .transition(TransitionEffect.asymmetric(
+              TransitionEffect.OPACITY.combine(TransitionEffect.translate({ x: 72 }))
+                .animation({ duration: motionDuration(Motion.duration.base), curve: Motion.curve.decelerate }),
+              TransitionEffect.OPACITY
+                .animation({ duration: motionDuration(Motion.duration.fast), curve: Motion.curve.accelerate })
+            ))
         } else if (this.loading && this.amountOptions.length === 0) {
           PageState({ kind: 'loading', title: '正在获取充值信息', message: '正在同步金额与支付方式' })
         } else if (this.errorMsg.length > 0 && this.amountOptions.length === 0) {
@@ -249,6 +258,13 @@ struct RechargePage {
                 .onClick(() => this.handlePay())
             }.width('100%').padding({ left: 20, right: 20, top: 12, bottom: 28 })
           }.layoutWeight(1).width('100%').align(Alignment.Top).scrollBar(BarState.Off)
+            // 金额页退场时轻微缩小并淡出，让收银台的滑入有"从上面压过来"的层次；
+            // 只有进场给淡入，避免返回时和收银台出场动画互相抢。
+            .transition(TransitionEffect.asymmetric(
+              TransitionEffect.OPACITY.animation({ duration: motionDuration(Motion.duration.fast) }),
+              TransitionEffect.OPACITY.combine(TransitionEffect.scale({ x: 0.97, y: 0.97 }))
+                .animation({ duration: motionDuration(Motion.duration.base), curve: Motion.curve.accelerate })
+            ))
         }
       }
     }.width('100%').height('100%')

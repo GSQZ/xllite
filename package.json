@@ -4,7 +4,7 @@
   "description": "XJIT 校园综合服务",
   "private": true,
   "scripts": {
-    "test": "npm run test:services && npm run test:pages && npm run test:campus && npm run test:ui-structure && npm run test:contrast && npm run test:api23 && npm run test:gateway && npm run test:login && npm run test:brand",
+    "test": "npm run audit:scope && npm run test:services && npm run test:pages && npm run test:campus && npm run test:ui-structure && npm run test:contrast && npm run test:api23 && npm run test:gateway && npm run test:login && npm run test:brand",
     "test:services": "node tools/service-regression.cjs",
     "test:pages": "node tools/page-behavior-regression.cjs",
     "test:campus": "node tools/campus-companion-regression.cjs",
@@ -14,6 +14,7 @@
     "test:gateway": "node tools/gateway-regression.cjs",
     "test:login": "node tools/login-regression.cjs",
     "test:brand": "node tools/brand-regression.cjs",
-    "check:warnings": "node tools/arkts-warnings.cjs"
+    "check:warnings": "node tools/arkts-warnings.cjs",
+    "audit:scope": "node tools/scope-audit.cjs"
   }
 }

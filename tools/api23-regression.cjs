@@ -40,13 +40,39 @@ test('native material caches all eight appearance combinations independently',as
  const f=materials(26);await f.api.loadImmersiveMaterial();const instances=new Set();
  for(const dark of [false,true])for(const interactive of [false,true])for(const prominent of [false,true]){
   const material=f.api.glassMaterial(dark,interactive,prominent);assert.equal(f.api.glassMaterial(dark,interactive,prominent),material);instances.add(material);
-  const o=material.options;assert.equal(o.style,prominent?'thick':'regular');assert.equal(o.interactive,interactive);assert.equal(o.applyShadow,prominent);
-  assert.equal(o.materialColor,dark?'#33142033':'#33FFFFFF');assert.equal(o.lightEffect?.color,dark?'#80A9C4FF':'#CCFFFFFF');
+  const o=material.options;
+  // 悬浮栏必须走薄档。之前 prominent 也传 thick，材质读出来是一块白板，
+  // 和"玻璃"没有关系——这正是"背景一点都不透"的根因。
+  assert.equal(o.style,prominent?'thin':'regular');
+  assert.equal(o.interactive,interactive);assert.equal(o.applyShadow,true);
+  // 浅色不额外叠色（全透明）；深色只给一丝压暗。
+  assert.equal(o.materialColor,dark?'#0A000000':'#00000000');
+  assert.equal(o.lightEffect?.color,dark?'#66A9C4FF':'#B3FFFFFF');
  }
  assert.equal(instances.size,8);assert.equal(f.logs.length,8);
- assert.ok(f.logs.every(log=>log[1]==='XJITMaterial' && log[2]==='Native material created'));
+ assert.ok(f.logs.every(log=>log[1]==='XJITMaterial' && log[2]==='Native material created style=%{public}d prominent=%{public}s'));
 });
 test('minimum SDK is API23 while target and compile remain API26', () => { const p = JSON.parse(fs.readFileSync(path.join(root, 'build-profile.json5'), 'utf8')).app.products[0]; assert.equal(p.compatibleSdkVersion, '6.1.0(23)'); assert.equal(p.targetSdkVersion, '26.0.0'); });
+test('compatibility glass keeps the backdrop visible instead of veiling it', () => {
+ const s = fs.readFileSync(path.join(root, 'entry/src/main/ets/components/NativeGlass.ets'), 'utf8');
+ // 遮罩 alpha 是"透不透"的总闸。浅色曾经用 #B8FFFFFF（72% 白），等于给内容
+ // 盖了一层七成白，模糊与否都看不出来，读起来就是白板；实测栏内像素方差 0.2，
+ // 一点背景都没透。这里把上限钉在 25%，并要求饱和度足够高以维持玻璃感。
+ // 只检查 backgroundEffect 的遮罩色，不要扫到顶部那条 1px 纯白高光。
+ const veil = s.match(/color: this\.prominent\s*\n\s*\?\s*\(this\.isDark \? '(#[0-9A-Fa-f]{8})' : '(#[0-9A-Fa-f]{8})'\)\s*\n\s*:\s*\(this\.isDark \? '(#[0-9A-Fa-f]{8})' : '(#[0-9A-Fa-f]{8})'\)/);
+ assert.ok(veil !== null, 'the backgroundEffect veil colours must be findable');
+ const alphas = veil.slice(1, 5).map(c => parseInt(c.slice(1, 3), 16));
+ assert.ok(Math.max(...alphas) <= 0x40, 'the fallback veil must stay translucent, max alpha ' + Math.max(...alphas));
+ const sats = [...s.matchAll(/\? \(this\.isDark \? ([\d.]+) : ([\d.]+)\)/g)].map(m => Number(m[2]));
+ assert.ok(sats.length >= 1, 'saturation values must be present');
+ assert.ok(Math.min(...sats) >= 2.5, 'saturation must stay high enough to read as glass');
+ // 自绘立面渐变同样不能太浓，否则把模糊层重新捂实。只检查 145° 那段渐变，
+ // 描边是单独的 1px，不在这条约束里。
+ const gradBlock = (s.match(/linearGradient\(\{ angle: 145[\s\S]*?\]\]\s*\}\)/)||[''])[0];
+ const grad = [...gradBlock.matchAll(/'#([0-9A-Fa-f]{2})[0-9A-Fa-f]{6}'/g)].map(m => parseInt(m[1], 16));
+ assert.ok(grad.length >= 3, 'the 145-degree facade gradient must be present');
+ assert.ok(grad.every(a => a <= 0x20), 'the facade gradient must stay light, max alpha ' + Math.max(...grad));
+});
 test('compatibility glass uses native blur rather than an opaque placeholder', () => { const s = fs.readFileSync(path.join(root, 'entry/src/main/ets/components/NativeGlass.ets'), 'utf8'); assert.match(s, /backgroundEffect\(\{/); });
 function mainTabs(reduceMotion) {
   const timers = new Map(); let next = 1;
@@ -78,25 +104,63 @@ test('enabling reduced motion retires a pending theme reveal and clears overlay'
  const page=new module.exports.ThemeWash(); page.getUIContext=()=>({animateTo:(_o,fn)=>fn()}); page.onFlip(); assert.equal(timers.size,1);
  values.set('reduceMotion',true); page.onFlip(); assert.equal(timers.size,0); assert.equal(page.washOpacity,0);
 });
-test('dock scrim fully isolates scrolling glyphs below the fade edge', () => {
+test('dock scrim stays translucent so the glass has something to blur', () => {
  const source=fs.readFileSync(path.join(root,'entry/src/main/ets/pages/MainTabs.ets'),'utf8');
- assert.ok(source.includes("['#FF152039', 0.25]")); assert.ok(source.includes("['#FFEAF0FB', 0.25]"));
- assert.ok(source.includes('BlurTabBar({')); assert.ok(source.includes('.hitTestBehavior(HitTestMode.None)'));
+ // 衬底的作用是压住滚动文字，但不能压成实色：导航栏的 backdropBlur 需要背后
+ // 有画面可模糊，衬底一旦不透明，玻璃就退化成一块纯色板。
+ // 所以底部只到约 60%，并要求它不是 #FF。
+ assert.ok(!source.includes("['#FF152039', 0.25]"), 'the scrim must not be fully opaque');
+ assert.ok(!source.includes("['#FFEAF0FB', 0.25]"), 'the scrim must not be fully opaque');
+ assert.match(source, /\['#99152039', 1\]/);
+ assert.match(source, /\['#99EAF0FB', 1\]/);
+ assert.ok(source.includes('BlurTabBar({'));
+ assert.ok(source.includes('.hitTestBehavior(HitTestMode.None)'));
 });
-test('flowing dock has one shared noninteractive indicator and vertical labels',()=>{
+test('flowing dock selects by colour only, with vertical icon over label',()=>{
  const source=fs.readFileSync(path.join(root,'entry/src/main/ets/components/BlurTabBar.ets'),'utf8');
- assert.match(source,/Column\(\{ space: 3 \}\)/); assert.match(source,/\.translate\(\{ x: this.currentIndex \* this.itemWidth \}\)/);
- assert.match(source,/\.onAreaChange/); assert.match(source,/\.hitTestBehavior\(HitTestMode.None\)/);
+ // 纵向排布：图标在上、文字在下。
+ assert.match(source,/Column\(\{ space: 4 \}\)/);
+ assert.match(source,/\.width\(ICON_SIZE\)\.height\(ICON_SIZE\)/);
  assert.match(source,/this.reduceMotion \? 0 :/); assert.ok(!source.includes('setTimeout')); assert.ok(!source.includes("'#D9E5EDFF'"));
 });
-test('dock selection uses a flat tint without decorative gradient border or shadow',()=>{
+test('dock selects by highlight and idle dimming, never by a painted block',()=>{
  const source=fs.readFileSync(path.join(root,'entry/src/main/ets/components/BlurTabBar.ets'),'utf8');
- assert.doesNotMatch(source,/\.linearGradient\(|\.shadow\(|\.border\(/);
- assert.match(source,/\.backgroundColor\(this\.isDark \? '#263B59' : '#E5EDFF'\)/);
+ // 选中态只靠颜色 + 未选中整体压透明度，不做任何宽度/位置需要和容器对齐的色块。
+ for (const banned of ['indicatorX','indicatorW','INDICATOR_','recalcIndicator','itemWidth','ICON_PILL']) {
+  assert.ok(!source.includes(banned),'dock must not reintroduce a measured indicator: '+banned);
+ }
+ // 选中：品牌色；未选中：次级色 + IDLE_OPACITY 弱化。
+ assert.match(source,/private tint\(index: number\): ResourceColor/);
+ assert.match(source,/this\.currentIndex === index \? this\.palette\.primary : this\.palette\.onSurfaceVariant/);
+ assert.match(source,/\.fillColor\(this\.tint\(index\)\)/);
+ assert.match(source,/\.fontColor\(this\.tint\(index\)\)/);
+ assert.match(source,/const IDLE_OPACITY: number = ([\d.]+)/);
+ assert.match(source,/\.opacity\(this\.currentIndex === index \? 1 : IDLE_OPACITY\)/);
+ // 按压不改底色，只做缩放；底色块会让选中态和按压态互相干扰。
+ assert.ok(!source.includes('pressingIdx === index\n      ? (this.isDark'),
+   'the pressed state must not paint a background');
+ assert.match(source,/accessibilityDescription\(this\.currentIndex === index \? '已选中' : '切换到'/);
+ // 均分：每项 layoutWeight(1)，数量变化不需要改布局。
+ assert.match(source,/ForEach\(TABS_LABELS/);
+ assert.match(source,/\.layoutWeight\(1\)\.height\(BAR_CONTENT_HEIGHT\)/);
 });
-test('dock spring is bypassed rather than merely zero-duration under reduced motion',()=>{
+test('dock signal its pressed slot without waiting for the selection to change',()=>{
  const source=fs.readFileSync(path.join(root,'entry/src/main/ets/components/BlurTabBar.ets'),'utf8');
- assert.match(source,/this.reduceMotion \? Curve.Linear : curves.springMotion\(0.32, 0.86, 0.12\)/);
+ assert.match(source,/this\.pressingIdx = index/);
+ assert.match(source,/TouchType\.Cancel/);
+ // 按压缩小而不是放大：玻璃按钮被"压进去"更符合玻璃的物理直觉，
+ // 放大反而像浮起来，和"按下去"的手感相反。
+ assert.match(source,/const PRESS_SCALE: number = 0\.92/);
+ assert.match(source,/\.scale\(\{ x: this\.reduceMotion \|\| this\.pressingIdx !== index \? 1 : PRESS_SCALE/);
+});
+test('dock animation is bypassed rather than merely zero-duration under reduced motion',()=>{
+ const source=fs.readFileSync(path.join(root,'entry/src/main/ets/components/BlurTabBar.ets'),'utf8');
+ // 栏里会动的只剩按压缩放，它必须走「减少动效 -> 时长 0」这条路，
+ // 而不是留着曲线只把时长设 0（曲线仍会被求值一次，部分机型表现为一帧跳动）。
+ assert.match(source,/\.animation\(\{ duration: this\.reduceMotion \? 0 : Motion\.duration\.instant/);
+ assert.match(source,/this\.reduceMotion \|\| this\.pressingIdx !== index \? 1 : PRESS_SCALE/);
+ assert.ok(!source.includes('springMotion'));
+ assert.ok(!source.includes('setTimeout'));
 });
 test('native login uses packaged mountain brand without monochrome tint',()=>{
  const source=fs.readFileSync(path.join(root,'entry/src/main/ets/pages/LoginPage.ets'),'utf8');
@@ -113,8 +177,19 @@ test('tab content switches without crossfading two readable text surfaces',()=>{
  const body=source.slice(source.indexOf('  build()'),source.indexOf('  pageTransition()'));
  assert.equal((body.match(/\.animation\(/g)||[]).length,0);
 });
-test('dock sits lower while bottom inset never becomes negative',()=>{
- const source=fs.readFileSync(path.join(root,'entry/src/main/ets/pages/MainTabs.ets'),'utf8');
- assert.ok(source.includes('bottom: Math.max(0, this.safeAreaBottom - 8)'));
+test('dock clears the gesture bar without letting the inset go negative',()=>{
+ // 底部避让从 MainTabs 挪进了 BlurTabBar 自己：栏贴边通栏后，
+ // 外边距再垫一层会重复避让。断言避让仍然存在且被钳到非负。
+ const bar=fs.readFileSync(path.join(root,'entry/src/main/ets/components/BlurTabBar.ets'),'utf8');
+ assert.match(bar,/@StorageLink\('safeAreaBottom'\) safeAreaBottom: number = 0/);
+ // 玻璃必须铺到屏幕底边：高度含 safeAreaBottom，圆角只给上面两角，
+ // 内容再用 margin 让出手势条。少任何一条，栏底都会露出一条背景色。
+ assert.match(bar,/\.height\(BAR_CONTENT_HEIGHT \+ PAD_Y \* 2 \+ this\.safeAreaBottom\)/);
+ assert.match(bar,/\.borderRadius\(\{ topLeft: TAB_RADIUS, topRight: TAB_RADIUS \}\)/);
+ assert.match(bar,/\.margin\(\{ bottom: PAD_Y \+ this\.safeAreaBottom \}\)/);
+ assert.ok(!bar.includes('.margin({ bottom: this.safeAreaBottom })'), 'the bar must sit on the screen edge');
+ const tabs=fs.readFileSync(path.join(root,'entry/src/main/ets/pages/MainTabs.ets'),'utf8');
+ assert.ok(!tabs.includes('bottom: Math.max(0, this.safeAreaBottom - 8)'),
+   'the inset must not be applied twice');
 });
 (async()=>{for(const {name,run} of tests){count++;try{await run();console.log('PASS '+name)}catch(e){failed++;console.error('FAIL '+name+': '+e.message)}}console.log(`${count} API23 checks, ${failed} failed`);process.exitCode=failed?1:0;})();

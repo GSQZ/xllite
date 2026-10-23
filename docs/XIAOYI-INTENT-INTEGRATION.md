@@ -34,7 +34,7 @@ https://developer.huawei.com/consumer/cn/doc/service/intents-ai-distribution-cha
 - PageIntentDecoratorInfo第333、342行：uiAbility可选，pagePath必填且必须对应存在的页面；navigationId与navDestinationName可选。
 - InsightIntentPage第366—378行：仅适用于struct页面，基础能力since20。
 - 当前EntryAbility在启动时加载LoginPage，而待办页面本身尚无独立登录闸门。直接把TodoPage装饰为AI页面入口可能绕开原启动登录路径；挂接前必须验证意图页面加载顺序及账号检查，不能只验证编译。
-- 本轮外部搜索未取得相关正文，返回结果与意图无关，未作为平台契约证据。
+- 外部检索未取得可复核的平台正文，返回结果与意图无关，未作为平台契约证据。
 
 已具备的应用内部前置条件：dueAt结构化时间、原生时间选择、串行持久化、卡片刷新、显式提醒登记、完成删除实况窗清理及失败重试。仍未具备：意图专用输入确认与幂等处理、平台垂域/分发确认、直接页面账号闸门和真机小艺触发证据。
 

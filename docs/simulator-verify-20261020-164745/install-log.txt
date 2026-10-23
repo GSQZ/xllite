@@ -1,2 +1,0 @@
-[Info]App install path:D:\XJITApp-api23-login-simulator\entry\build\default\outputs\default\entry-default-signed.hap msg:error: failed to install bundle. code:9568332 error: install sign info inconsistent. 
-AppMod finish

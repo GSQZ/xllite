@@ -8,11 +8,15 @@ param(
   [string]$AppLabel = '掌上新理工·验收',
   [ValidatePattern('^[a-z0-9-]+$')][string]$EvidenceName = 'emulator',
   [switch]$OfflinePreview,
-  [switch]$NativeSchool
+  [switch]$NativeSchool,
+  # 只是让验收包跳过登录直达 Tab 页，用来截取真正的运行态界面。
+  # 只在模拟器副本里注入，正式源码永远不含这段。
+  [switch]$PreviewLogin
 )
 $ErrorActionPreference = 'Stop'
 if ($NativeSchool -and $OfflinePreview) { throw 'Native school acceptance cannot use synthetic preview data.' }
 if ($OfflinePreview -and $BundleName -ne 'com.xjit.app.designreview') { throw 'Offline UI preview must use its isolated designreview bundle.' }
+if ($PreviewLogin -and $BundleName -ne 'com.xjit.app.designreview') { throw 'Preview login must use its isolated designreview bundle.' }
 if ($BundleName -eq 'com.xjit.app') { throw 'This tool is restricted to independent test bundles.' }
 $artifactName = if ($NativeSchool) { 'entry-school-native-signed.hap' } elseif ($OfflinePreview) { 'entry-design-preview-signed.hap' } else { 'entry-acceptance-signed.hap' }
 $sourceRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
@@ -89,6 +93,25 @@ New-Item -ItemType Directory -Path $records -Force | Out-Null
 if ($OfflinePreview) {
   & $node (Join-Path $sourceRoot 'tools\design-preview-data.cjs') $stage
   if ($LASTEXITCODE -ne 0) { throw 'Offline preview stage injection failed.' }
+}
+if ($PreviewLogin) {
+  # loadSession 是唯一的会话入口：任何页面在拿数据前都会先经它判断是否已登录。
+  # 在这里短路成"已登录"，后续的 token 守卫仍然按正常逻辑跑，只是永远看不到登录页。
+  $authPath = Join-Path $stage 'entry\src\main\ets\services\AuthManager.ets'
+  $auth = Get-Content -LiteralPath $authPath -Raw
+  $anchor = 'export async function loadSession(): Promise<boolean> {'
+  if (-not $auth.Contains($anchor)) { throw 'Preview login anchor missing in AuthManager.loadSession.' }
+  $injected = $anchor + @"
+
+  savedUsername = '2026000001'; savedAccessToken = 'preview-only-not-a-real-token'
+  savedTokenExpiresAt = Date.now() + 86400000; savedAuthSource = GATEWAY_AUTH_SOURCE
+  setTodoOwner(savedUsername)
+  return true
+"@
+  $auth = $auth.Replace($anchor, $injected)
+  if (($auth -split 'return true').Count -lt 2) { throw 'Preview login injection did not apply.' }
+  Set-Content -LiteralPath $authPath -Value $auth -Encoding utf8
+  Write-Host '[preview-login] loadSession short-circuited for screenshot verification'
 }
 $prevSdk = $env:DEVECO_SDK_HOME; $prevJava = $env:JAVA_HOME; $prevModules = $env:NODE_PATH
 try {
